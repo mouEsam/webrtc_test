@@ -1,13 +1,21 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class ListDiffNotifier<I> extends ChangeNotifier {
-  List<I> _items = [];
+  final VoidCallback? _onDisposed;
+  final List<I> _items = [];
 
   final List<ValueChanged<I>> _addedListeners = [];
   final List<ValueChanged<I>> _removedListeners = [];
+
+  ListDiffNotifier([this._onDisposed]);
+
+  bool _disposed = false;
+
+  bool get isEmpty => _items.isEmpty;
+
+  int get length => _items.length;
+
+  List<I> get items => List.unmodifiable(_items);
 
   void addDiffListener({
     ValueChanged<I>? onAdded,
@@ -34,7 +42,20 @@ class ListDiffNotifier<I> extends ChangeNotifier {
   }
 
   @override
+  void addListener(VoidCallback listener) {
+    if (_disposed) return;
+    super.addListener(listener);
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    if (_disposed) return;
+    super.removeListener(listener);
+  }
+
+  @override
   void notifyListeners({I? addedItem, I? removedItem}) {
+    if (_disposed) return;
     super.notifyListeners();
     if (addedItem != null) {
       for (var element in _addedListeners) {
@@ -49,34 +70,30 @@ class ListDiffNotifier<I> extends ChangeNotifier {
   }
 
   void addItem(I item) {
+    if (_disposed) return;
     _items.add(item);
     notifyListeners(addedItem: item);
   }
 
   void removeItem(I item) {
-    _items.remove(item);
-    notifyListeners(removedItem: item);
+    if (_disposed) return;
+    final index = _items.indexOf(item);
+    if (index >= 0) {
+      item = _items[index];
+      _items.remove(item);
+      notifyListeners(removedItem: item);
+    }
   }
-}
 
-class Attendee extends Equatable {
-  final String name;
-  final ValueNotifier<List<RTCIceCandidate>> candidates;
-}
+  void forEach(ValueChanged<I> action) => _items.forEach(action);
 
-class Room extends Equatable {
-  final String name;
-  final RTCSessionDescription offer;
-  final ValueNotifier<List<Attendee>> attendees;
-}
-
-class RoomClient {
-  static const _COLLECTION_NAME = 'AvailableRooms';
-  static const _ANSWERS_COLLECTION_NAME = 'Answers';
-  static const _ICE_CANDIDATES = 'IceCandidates';
-  static const _ATTENDEES_COLLECTION = 'Attendees';
-
-  final FirebaseFirestore _firestoreInstance;
-
-  const RoomClient(this._firestoreInstance);
+  @override
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _onDisposed?.call();
+    _addedListeners.clear();
+    _removedListeners.clear();
+    super.dispose();
+  }
 }
