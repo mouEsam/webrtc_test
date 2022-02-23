@@ -8,19 +8,11 @@ import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/providers/room/room_notifier.dart';
 import 'package:webrtc_test/providers/room/room_states.dart';
 
-final _rendererProvider = StateProvider.autoDispose.family((ref, _) {
-  final RTCVideoRenderer renderer = RTCVideoRenderer();
-  return renderer;
-});
-
-final localRendererProvider = _rendererProvider(0);
-final remoteRendererProvider = _rendererProvider(1);
-
 final roomRendererProvider = StateProvider.autoDispose((ref) {
   final renderer = RoomRenderer(
     ref.read(roomNotifierProvider.notifier),
-    ref.read(localRendererProvider),
-    ref.read(remoteRendererProvider),
+    RTCVideoRenderer(),
+    RTCVideoRenderer(),
   );
   renderer.init();
   ref.onDispose(() {
