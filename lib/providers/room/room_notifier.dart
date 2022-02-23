@@ -147,8 +147,5 @@ class RoomNotifier extends StateNotifier<RoomState> {
     connection.onSignalingState = (RTCSignalingState state) {
       log('Signaling state change: $state');
     };
-    connection.onIceGatheringState = (RTCIceGatheringState state) {
-      log('ICE connection state change: $state');
-    };
   }
 }
