@@ -157,7 +157,7 @@ class RoomClient implements IRoomClient {
   @override
   Future<void> addCandidate(
       Attendee attendee, RtcIceCandidateModel candidate) async {
-    final roomDoc = rooms.doc(attendee.id);
+    final roomDoc = rooms.doc(attendee.roomId);
     final attendeeDoc = getAttendees(roomDoc).doc(attendee.id);
     await getIceCandidates(attendeeDoc).add(candidate);
   }
