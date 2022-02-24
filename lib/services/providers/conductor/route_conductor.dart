@@ -59,9 +59,10 @@ class RouteConductor extends StateNotifier<ConductorState>
     });
     _busSubscription =
         _eventBus.on<NavigationEvent>().listen(handleNavigationEvent);
-    addListener(
-      (state) => state._complete(Future.sync(() => handleState(state))),
-    );
+    addListener((state) {
+      if (state.isHandled) return;
+      state._complete(Future.sync(() => handleState(state)));
+    });
   }
 
   @override
@@ -87,10 +88,11 @@ class RouteConductor extends StateNotifier<ConductorState>
     if (event is AuthRequiredNavigationEvent) {
       final finished = _router.push(const LoginRoute());
       if (event.onResult != null) {
-        final isAuth = stream.firstWhere((element) => element.auth);
+        final isAuth = _userState
+            .firstWhere((element) => element is AuthenticatedUserState);
         final done = await Future.any([isAuth, finished]);
-        if (done is ConductorState) {
-          await done.awaitHandle;
+        if (done is AuthenticatedUserState) {
+          state = MainConductorState(0);
           event.onResult?.call(true);
         } else {
           event.onResult?.call(false);

@@ -16,7 +16,7 @@ abstract class ConductorState {
     }
   }
 
-  void _complete(_) {
+  void _complete([_ = 0]) {
     if (!_completer.isCompleted) {
       _completer.complete(_);
     }
@@ -28,13 +28,13 @@ class InitialConductorState extends ConductorState {
 }
 
 class AuthRequiredConductorState extends ConductorState {
-  AuthRequiredConductorState() : super(false);
+  AuthRequiredConductorState([complete]) : super(false, complete);
 }
 
 class LoadingConductorState extends ConductorState {
-  LoadingConductorState() : super(false);
+  LoadingConductorState([complete]) : super(false, complete);
 }
 
 class MainConductorState extends ConductorState {
-  MainConductorState() : super(true);
+  MainConductorState([complete]) : super(true, complete);
 }
