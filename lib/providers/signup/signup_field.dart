@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/data/remote/apis/auth_client.dart';
+import 'package:webrtc_test/data/remote/interfaces/auth_client.dart';
 import 'package:webrtc_test/exceptions/page_error.dart';
 import 'package:webrtc_test/exceptions/page_error_handler.dart';
 import 'package:webrtc_test/helpers/providers/page_notifier.dart';
@@ -22,7 +23,7 @@ class SignupField extends PageNotifier {
   final nameField = TextEditingController();
   final emailField = TextEditingController();
   final passwordField = TextEditingController();
-  final AuthClient _authClient;
+  final IAuthClient _authClient;
 
   SignupField(this._authClient, PageErrorHandler errorHandler)
       : super(errorHandler);

@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/data/remote/apis/firebase.dart';
+import 'package:webrtc_test/data/remote/interfaces/auth_client.dart';
 
-final authClientProvider = Provider((ref) {
+final authClientProvider = Provider<IAuthClient>((ref) {
   return AuthClient(ref.read(fireAuthProvider), ref.read(firestoreProvider));
 });
 
-class AuthClient {
+class AuthClient implements IAuthClient {
   static const _usersCollection = 'Users';
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firebaseFirestore;

@@ -2,12 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webrtc_test/blocs/models/available_user.dart';
 import 'package:webrtc_test/data/remote/apis/firebase.dart';
+import 'package:webrtc_test/data/remote/interfaces/user_client.dart';
 
-final userClientProvider = Provider((ref) {
+final userClientProvider = Provider<IUserClient>((ref) {
   return UserClient(ref.read(firestoreProvider));
 });
 
-class UserClient {
+class UserClient implements IUserClient {
   static const _usersCollection = 'Users';
   final FirebaseFirestore _firebaseFirestore;
 

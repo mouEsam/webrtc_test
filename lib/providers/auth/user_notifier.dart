@@ -5,6 +5,7 @@ import 'package:riverpod/riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/data/remote/apis/auth_client.dart';
+import 'package:webrtc_test/data/remote/interfaces/auth_client.dart';
 import 'package:webrtc_test/providers/auth/user_state.dart';
 
 final userProvider = StateNotifierProvider<UserNotifier, UserState>((ref) {
@@ -12,7 +13,7 @@ final userProvider = StateNotifierProvider<UserNotifier, UserState>((ref) {
 });
 
 class UserNotifier extends StateNotifier<UserState> {
-  final AuthClient _authClient;
+  final IAuthClient _authClient;
   late final StreamSubscription _userSub;
 
   UserNotifier(this._authClient) : super(const LoadingUserState()) {
