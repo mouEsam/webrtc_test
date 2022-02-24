@@ -12,7 +12,7 @@ abstract class ConductorState {
   Future<void> get awaitHandle => _completer.future;
   ConductorState(this.auth, [complete]) {
     if (complete != null) {
-      _completer.complete(complete);
+      _complete(complete);
     }
   }
 
