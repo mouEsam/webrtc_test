@@ -1,21 +1,19 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:event_bus/event_bus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'events_bus.dart';
-
-final appEventBusProviderRef = Provider<EventBus>((ref) => EventBus());
+import 'event.dart';
+import 'ui_events.dart';
 
 /// do not forget wrap this stateful widget  in app.dart
 /// response with show custom ui from package [dio_errors , auth_status,]
-/// you can add your custom events by inherit new class form [AppEventBus] in your app code
-class AppEventBusOverlay extends ConsumerStatefulWidget {
+/// you can add your custom events by inherit new class form [UIEvent] in your app code
+class AppEventOverlay extends ConsumerStatefulWidget {
   final Widget child;
-  final Function(AppEventBus) onListen;
-  const AppEventBusOverlay({
+  final Function(UIEvent) onListen;
+  const AppEventOverlay({
     Key? key,
     required this.child,
     required this.onListen,
@@ -25,14 +23,14 @@ class AppEventBusOverlay extends ConsumerStatefulWidget {
   _UiEventBusOverlayState createState() => _UiEventBusOverlayState();
 }
 
-class _UiEventBusOverlayState extends ConsumerState<AppEventBusOverlay>
+class _UiEventBusOverlayState extends ConsumerState<AppEventOverlay>
     with WidgetsBindingObserver {
   late StreamSubscription _subscription;
 
   void _initEventBus(WidgetRef ref) {
-    final eventBus = ref.read(appEventBusProviderRef);
+    final eventBus = ref.read(appEventBusProvider);
 
-    _subscription = eventBus.on<AppEventBus>().listen((event) {
+    _subscription = eventBus.on<UIEvent>().listen((event) {
       log(event.toString(), name: 'auth package on listen fire');
       widget.onListen(event);
     });
