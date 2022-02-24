@@ -31,6 +31,7 @@ class AuthClient implements IAuthClient {
     });
   }
 
+  @override
   Stream<UserAccount?> get currentUser {
     return _firebaseAuth.userChanges().switchMap((user) {
       if (user != null) {
@@ -41,6 +42,7 @@ class AuthClient implements IAuthClient {
     }).handleError((_) => null);
   }
 
+  @override
   Future<void> signup(String name, String email, String password) async {
     final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
@@ -51,6 +53,7 @@ class AuthClient implements IAuthClient {
     await getUserRef(user).set(account);
   }
 
+  @override
   Future<void> login(String email, String password) async {
     final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
@@ -59,6 +62,7 @@ class AuthClient implements IAuthClient {
     userCredential.user!;
   }
 
+  @override
   Future<void> anonymousLogin(String name) async {
     final userCredential = await _firebaseAuth.signInAnonymously();
     final user = userCredential.user!;

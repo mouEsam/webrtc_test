@@ -26,6 +26,7 @@ class UserClient implements IUserClient {
     });
   }
 
+  @override
   Future<List<AvailableUser>> getAvailableUsers() async {
     final ref = usersRef;
     return ref.get().then((value) => value.docs.map((e) => e.data()).toList());
