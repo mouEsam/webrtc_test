@@ -43,11 +43,14 @@ class RouteConductor extends StateNotifier<ConductorState>
 
   RouteConductor(this._router, this._eventBus, this._userState)
       : super(InitialConductorState()) {
-    _subscription = _eventBus
-        .on<BeginNavigationEvent>()
-        .first
-        .asStream()
-        .switchMap((value) => _userState)
+    final beginStream =
+        _eventBus.on<BeginNavigationEvent>().first.asStream().cast<void>();
+    final stream = _combine<void, UserState>(
+      beginStream,
+      _userState,
+      StatesComplex.new,
+    );
+    _subscription = stream
         .asyncMap(createState)
         .whereType<ConductorState>()
         .distinct((a, b) => a.runtimeType == b.runtimeType)
@@ -56,7 +59,6 @@ class RouteConductor extends StateNotifier<ConductorState>
     });
     _busSubscription =
         _eventBus.on<NavigationEvent>().listen(handleNavigationEvent);
-
     addListener(
       (state) => state._complete(Future.sync(() => handleState(state))),
     );
@@ -67,6 +69,18 @@ class RouteConductor extends StateNotifier<ConductorState>
     super.dispose();
     _subscription.cancel();
     _busSubscription.cancel();
+  }
+
+  Stream<StatesComplex> _combine<A, B>(
+    Stream<A> s1,
+    Stream<B> s2,
+    StatesComplex Function(B v2) combiner,
+  ) {
+    return CombineLatestStream.combine2<A, B, StatesComplex>(
+      s1,
+      s2,
+      (_, v) => combiner(v),
+    );
   }
 
   void handleNavigationEvent(NavigationEvent event) async {
@@ -85,7 +99,8 @@ class RouteConductor extends StateNotifier<ConductorState>
     }
   }
 
-  FutureOr<ConductorState?> createState(UserState userState) {
+  FutureOr<ConductorState?> createState(StatesComplex states) {
+    final userState = states.userState;
     log("Received user state ${userState.runtimeType}");
     if (userState is LoadingUserState) {
       return LoadingConductorState();
@@ -105,7 +120,6 @@ class RouteConductor extends StateNotifier<ConductorState>
       _router.popUntilRoot();
       _router.replace<void>(const LoginRoute());
     } else if (state is MainConductorState) {
-      log("Going");
       _router.popUntilRoot();
       _router.replace<void>(const RoomsRoute());
     }

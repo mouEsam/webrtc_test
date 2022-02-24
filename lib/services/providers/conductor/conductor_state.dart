@@ -1,5 +1,10 @@
 part of 'route_conductor.dart';
 
+class StatesComplex {
+  final UserState userState;
+  const StatesComplex(this.userState);
+}
+
 abstract class ConductorState {
   final bool auth;
   final Completer<void> _completer = Completer();
