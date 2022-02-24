@@ -53,15 +53,17 @@ class RouteConductor extends StateNotifier<ConductorState>
     _subscription = stream
         .asyncMap(createState)
         .whereType<ConductorState>()
-        .distinct((a, b) => a.runtimeType == b.runtimeType)
         .listen((state) {
       this.state = state;
     });
     _busSubscription =
         _eventBus.on<NavigationEvent>().listen(handleNavigationEvent);
-    addListener((state) {
-      if (state.isHandled) return;
-      state._complete(Future.sync(() => handleState(state)));
+    this
+        .stream
+        .distinct((a, b) => a.runtimeType == b.runtimeType)
+        .where((event) => !event.isHandled)
+        .listen((event) {
+      event._complete(Future.sync(() => handleState(event)));
     });
   }
 
@@ -88,15 +90,17 @@ class RouteConductor extends StateNotifier<ConductorState>
     if (event is AuthRequiredNavigationEvent) {
       final finished = _router.push(const LoginRoute());
       if (event.onResult != null) {
-        final isAuth = _userState
-            .firstWhere((element) => element is AuthenticatedUserState);
-        final done = await Future.any([isAuth, finished]);
-        if (done is AuthenticatedUserState) {
-          state = MainConductorState(0);
-          event.onResult?.call(true);
-        } else {
-          event.onResult?.call(false);
-        }
+        _subscription.pause(Future(() async {
+          final isAuth = _userState
+              .firstWhere((element) => element is AuthenticatedUserState);
+          final done = await Future.any([isAuth, finished]);
+          if (done is AuthenticatedUserState) {
+            state = MainConductorState(0);
+            event.onResult?.call(true);
+          } else {
+            event.onResult?.call(false);
+          }
+        }));
       }
     }
   }
