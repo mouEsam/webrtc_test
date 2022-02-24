@@ -18,7 +18,9 @@ class RoomsNotifier extends StateNotifier<RoomsState> {
 
   RoomsNotifier(
     this._roomClient,
-  ) : super(const InitialRoomsState());
+  ) : super(const InitialRoomsState()) {
+    loadRooms();
+  }
 
   Future<void> loadRooms() {
     return safeAttempt(() async {

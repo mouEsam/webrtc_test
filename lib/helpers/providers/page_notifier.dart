@@ -23,6 +23,10 @@ abstract class PageNotifier extends StateNotifier<PageState> {
     });
   }
 
+  set safeState(PageState newState) {
+    if (mounted) state = newState;
+  }
+
   Future<void> safeAttempt(
     FutureOr<PageState> Function() action, {
     VoidCallback? disposer,
@@ -31,12 +35,12 @@ abstract class PageNotifier extends StateNotifier<PageState> {
     final completer = Completer();
     WidgetsBinding.instance!.addPostFrameCallback((_) {
       completer.complete(Future(() async {
-        state = const LoadingPageState();
+        safeState = const LoadingPageState();
         try {
-          state = await action();
+          safeState = await action();
         } catch (e, s) {
           errorFactory ??= PageError.fromError;
-          state = ErrorPageState(errorFactory!(e));
+          safeState = ErrorPageState(errorFactory!(e));
           disposer?.call();
         }
       }));
