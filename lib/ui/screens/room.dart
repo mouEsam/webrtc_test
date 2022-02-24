@@ -27,6 +27,8 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
   @override
   void initState() {
     super.initState();
+    final state = ref.read(roomRendererProvider);
+    state.openUserMedia();
     connect();
   }
 

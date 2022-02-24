@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
+import 'package:webrtc_test/helpers/utils/box.dart';
 import 'package:webrtc_test/providers/room/room_notifier.dart';
 import 'package:webrtc_test/providers/room/room_states.dart';
 
@@ -32,12 +33,15 @@ class RoomRenderer {
   final RoomNotifier _roomNotifier;
   final RTCVideoRenderer localRenderer;
   final RTCVideoRenderer remoteRenderer;
+  late final Box<RoomRenderer> _instance;
 
   RoomRenderer(
     this._roomNotifier,
     this.localRenderer,
     this.remoteRenderer,
-  );
+  ) {
+    _instance = Box(this);
+  }
 
   void init() {
     localRenderer.initialize();
@@ -47,29 +51,38 @@ class RoomRenderer {
   void dispose() {
     localRenderer.dispose();
     remoteRenderer.dispose();
+    _instance.data = null;
   }
 
   void clear() {
     final stream = localRenderer.srcObject;
-    localRenderer.srcObject = null;
+    if (stream != null) localRenderer.srcObject = null;
     if (stream != null) {
       for (var track in stream.getTracks()) {
         track.stop();
       }
       stream.dispose();
     }
-    remoteRenderer.srcObject?.dispose();
-    remoteRenderer.srcObject = null;
+    final rStream = remoteRenderer.srcObject;
+    rStream?.dispose();
+    if (rStream != null) remoteRenderer.srcObject = null;
   }
 
   Future<void> openUserMedia() async {
     var stream = await navigator.mediaDevices
         .getUserMedia({'video': true, 'audio': false});
-    final state = _roomNotifier.state;
-    if (state is ConnectedRoomState) {
+    _roomNotifier.addListener((state) {
+      log('Got state track: ${state.runtimeType}');
+      _instance.nullableData?._roomListener(state);
+    });
+    localRenderer.srcObject = stream;
+  }
+
+  void _roomListener(RoomState state) {
+    final stream = localRenderer.srcObject;
+    if (stream != null && state is ConnectedRoomState) {
       _setupTracks(stream, state.connection);
     }
-    localRenderer.srcObject = stream;
   }
 
   void setupRoom(ConnectedRoomState connectedRoomState) {

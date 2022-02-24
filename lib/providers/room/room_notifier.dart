@@ -33,7 +33,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   RoomNotifier(
     this._roomClient,
-  ) : super(const LoadingRoomState());
+  ) : super(const InitialRoomState());
 
   Future<void> createRoom(String roomName, String name) async {
     RTCPeerConnection? connection;
@@ -86,7 +86,9 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   void _setupRoomListeners(
       Room room, Attendee user, RTCPeerConnection connection) {
+    log("_setupRoomListeners");
     room.attendees.addDiffListener(onAdded: (newAttendee) {
+      log("_setupRoomListeners ${newAttendee.id}");
       if (user.id != newAttendee.id) {
         connection.setRemoteDescription(newAttendee.sessionDescription);
       }
@@ -118,16 +120,22 @@ class RoomNotifier extends StateNotifier<RoomState> {
   }
 
   Future<void> safeAttempt(FutureOr<RoomState> Function() action,
-      [VoidCallback? disposer]) async {
-    state = const LoadingRoomState();
-    try {
-      state = await action();
-    } catch (e, s) {
-      log(e.toString());
-      log(s.toString());
-      state = const InitialRoomState();
-      disposer?.call();
-    }
+      [VoidCallback? disposer]) {
+    final completer = Completer();
+    WidgetsBinding.instance!.addPostFrameCallback((_) {
+      completer.complete(Future(() async {
+        state = const LoadingRoomState();
+        try {
+          state = await action();
+        } catch (e, s) {
+          log(e.toString());
+          log(s.toString());
+          state = const InitialRoomState();
+          disposer?.call();
+        }
+      }));
+    });
+    return completer.future;
   }
 
   void _registerPeerConnectionListeners(

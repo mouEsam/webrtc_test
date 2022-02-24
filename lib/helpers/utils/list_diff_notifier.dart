@@ -22,6 +22,7 @@ class ListDiffNotifier<I> extends ChangeNotifier {
     ValueChanged<I>? onRemoved,
   }) {
     if (onAdded != null) {
+      _items.forEach(onAdded);
       _addedListeners.add(onAdded);
     }
     if (onRemoved != null) {
