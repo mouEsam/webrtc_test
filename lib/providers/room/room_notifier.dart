@@ -142,7 +142,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
           await connection.setLocalDescription(offer ?? connectionData.offer);
         }
       } else {
-        await connection.setRemoteDescription(connectionData.offer);
+        final remoteOffer = await connection.getRemoteDescription();
+        if (remoteOffer == null) {
+          await connection.setRemoteDescription(connectionData.offer);
+        }
       }
       if (connectionData.answerId == user.id) {
         if (!localAlreadySet) {
@@ -152,7 +155,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
           room.connections[entry.key] = newConnection;
         }
       } else if (connectionData.answer != null) {
-        await connection.setRemoteDescription(connectionData.answer!);
+        final remoteAnswer = await connection.getRemoteDescription();
+        if (remoteAnswer == null) {
+          await connection.setRemoteDescription(connectionData.answer!);
+        }
       }
     }, onChanged: (entry) async {
       final connection = connections.items.firstWhereOrNull((element) {
