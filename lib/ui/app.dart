@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:overlay_support/overlay_support.dart' hide Toast;
 import 'package:webrtc_test/events/event_overlay.dart';
 import 'package:webrtc_test/events/ui_events.dart';
+import 'package:webrtc_test/helpers/ui/focus.dart';
 import 'package:webrtc_test/routes/app_router.dart';
 import 'package:webrtc_test/services/providers/conductor/route_conductor.dart';
 
@@ -37,7 +38,10 @@ class _AppState extends ConsumerState<App> {
                     ),
                     if (event.error.retry != null)
                       ElevatedButton(
-                        onPressed: event.error.retry,
+                        onPressed: () {
+                          AutoRouter.of(context).pop();
+                          context.loseFocusWrapper(event.error.retry!)();
+                        },
                         child: const Text('Retry'),
                       ),
                   ],

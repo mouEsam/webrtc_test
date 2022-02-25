@@ -30,6 +30,8 @@ class RoomsNotifier extends PageNotifier {
     return safeAttempt(() async {
       final rooms = await _roomClient.getAvailableRooms();
       return LoadedPageState(rooms);
-    }, errorFactory: OperationPageError.fromError);
+    }, errorFactory: (error) {
+      return OperationPageError.retry(error, loadRooms);
+    });
   }
 }
