@@ -24,7 +24,7 @@ final roomClientProvider = Provider<IRoomClient>((ref) {
 });
 
 class RoomClient implements IRoomClient {
-  static const _maxInt = 1 << 32;
+  static const _maxInt = 1 << 31; // safe for js
   static const _roomsCollection = 'AvailableRooms';
   static const _iceCandidates = 'IceCandidates';
   static const _attendeesCollection = 'Attendees';
@@ -54,11 +54,10 @@ class RoomClient implements IRoomClient {
     return roomDoc.collection(_connectionsCollection).withConverter(
         fromFirestore: (doc, options) {
       final json = doc.data()!;
-      final offerJson = json['offer'];
-      final offer = _createRtcSessionDesc(offerJson);
+      final offer = _createRtcSessionDesc(json['offer']);
       final answerJson = json['answer'];
       final answer =
-          offerJson == null ? null : _createRtcSessionDesc(answerJson);
+          answerJson == null ? null : _createRtcSessionDesc(answerJson);
       final parties = json['parties'];
       final offerId = json['offerId'];
       final answerId = json['answerId'];
@@ -177,11 +176,9 @@ class RoomClient implements IRoomClient {
         fromFirestore: (doc, options) {
       final json = doc.data()!;
       final name = json['name'];
-      final offerJson = json['offer'];
-      final offer = RTCSessionDescription(offerJson['sdp'], offerJson['type']);
-      return AvailableRoom(doc.id, name, offer);
+      return AvailableRoom(doc.id, name);
     }, toFirestore: (room, options) {
-      return {'name': room.name, 'offer': room.offer.toMap()};
+      return {'name': room.name};
     });
   }
 

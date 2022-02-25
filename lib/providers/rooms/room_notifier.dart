@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/data/remote/apis/room_client.dart';
@@ -34,6 +35,7 @@ class RoomsNotifier extends StateNotifier<RoomsState> {
     try {
       state = await action();
     } catch (e) {
+      log(e.toString());
       state = const InitialRoomsState();
     }
   }
