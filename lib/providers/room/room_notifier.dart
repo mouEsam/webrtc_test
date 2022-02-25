@@ -1,24 +1,41 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
-import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
+import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/data/remote/apis/room_client.dart';
 import 'package:webrtc_test/data/remote/interfaces/room_client.dart';
+import 'package:webrtc_test/helpers/utils/box.dart';
+import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
+import 'package:webrtc_test/providers/auth/user_notifier.dart';
+import 'package:webrtc_test/providers/auth/user_state.dart';
 import 'package:webrtc_test/providers/room/room_states.dart';
+import 'package:webrtc_test/services/providers/connection/peer_connection.dart';
 
 final roomNotifierProvider =
     StateNotifierProvider<RoomNotifier, RoomState>((ref) {
-  return RoomNotifier(ref.read(roomClientProvider));
+  return RoomNotifier(
+    ref.read(roomClientProvider),
+    ref.read(userProvider.notifier),
+  );
 });
 
 class RoomNotifier extends StateNotifier<RoomState> {
+  final UserNotifier _userAccount;
   final IRoomClient _roomClient;
+  late UserAccount userAccount;
+  final ListDiffNotifier<PeerConnection> connections =
+      ListDiffNotifier((connections) {
+    for (var connection in connections) {
+      connection.dispose();
+    }
+  });
 
   Map<String, dynamic> configuration = {
     'iceServers': [
@@ -33,70 +50,146 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   RoomNotifier(
     this._roomClient,
-  ) : super(const InitialRoomState());
+    this._userAccount,
+  ) : super(const InitialRoomState()) {
+    _userAccount.addListener((state) {
+      if (state is AuthenticatedUserState) {
+        userAccount = state.userAccount;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    connections.dispose();
+  }
 
   Future<void> createRoom(String roomName, String name) async {
-    RTCPeerConnection? connection;
     return safeAttempt(() async {
-      connection = await createPeerConnection(configuration);
-      final offer = await connection!.createOffer();
-      await connection!.setLocalDescription(offer);
-      final data = await _roomClient.createRoom(name, roomName, offer);
+      final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
-      _setupStreamsAndListeners(connection!, room, user);
+      _setupRoomListeners(room, user);
       return ConnectedRoomState(
         room: data.first,
         user: data.second,
-        connection: connection!,
+        connections: connections.items,
       );
-    }, connection?.dispose);
+    });
   }
 
   Future<void> joinRoom(AvailableRoom availableRoom, String name) async {
     RTCPeerConnection? connection;
     return safeAttempt(() async {
-      final offer = availableRoom.offer;
       connection = await createPeerConnection(configuration);
-      await connection!.setRemoteDescription(offer);
-      final answer = await connection!.createAnswer();
-      await connection!.setLocalDescription(answer);
-      final data = await _roomClient.answerRoom(availableRoom, name, answer);
+      final offer = await connection!.createOffer();
+      final data = await _roomClient.joinRoom(
+        availableRoom,
+        userAccount,
+        offer,
+      );
       final user = data.second;
       final room = data.first;
-      _setupStreamsAndListeners(connection!, room, user);
+      _setupRoomListeners(room, user, connection);
       return ConnectedRoomState(
         room: data.first,
         user: data.second,
-        connection: connection!,
+        connections: connections.items,
       );
     }, connection?.dispose);
   }
 
-  void _setupStreamsAndListeners(
-    RTCPeerConnection connection,
-    Room room,
-    Attendee user,
-  ) {
-    _setupRoomListeners(room, user, connection);
-    _registerPeerConnectionListeners(connection, (candidate) {
-      _roomClient.addCandidate(user, candidate);
-    });
-  }
-
   void _setupRoomListeners(
-      Room room, Attendee user, RTCPeerConnection connection) {
+    Room room,
+    Attendee user, [
+    RTCPeerConnection? connection,
+  ]) {
+    final connectionBox = Box(connection);
     log("_setupRoomListeners");
-    room.attendees.addDiffListener(onAdded: (newAttendee) {
-      log("_setupRoomListeners ${newAttendee.id}");
-      if (user.id != newAttendee.id) {
-        connection.setRemoteDescription(newAttendee.sessionDescription);
-      }
-      newAttendee.candidates.addDiffListener(onAdded: (newCandidate) {
-        connection.addCandidate(newCandidate.iceCandidate);
+    room.connections.addDiffListener(onAdded: (entry) async {
+      final attendee = room.attendees.items.firstWhereOrNull((element) {
+        return entry.key == element.id;
       });
+      if (attendee == null) return;
+      final existingConnection = connections.items.firstWhereOrNull((element) {
+        return element.remote.id == entry.key;
+      });
+      final bool localAlreadySet = existingConnection != null;
+      late final PeerConnection peerConnection;
+      late final RTCPeerConnection connection;
+      if (existingConnection != null) {
+        peerConnection = existingConnection;
+        connection = peerConnection.connection;
+      } else {
+        if (connectionBox.hasData) {
+          connection = connectionBox.data;
+          connectionBox.data = null;
+        } else {
+          connection = await createPeerConnection(configuration);
+        }
+        peerConnection = await PeerConnection.createConnection(
+          user,
+          attendee,
+          connection,
+        );
+        connections.addItem(peerConnection);
+      }
+      final connectionData = entry.value;
+      if (connectionData.offerId == user.id) {
+        if (!localAlreadySet) {
+          connection.setLocalDescription(connectionData.offer);
+        }
+      } else {
+        connection.setRemoteDescription(connectionData.offer);
+      }
+      if (connectionData.answerId == user.id) {
+        if (!localAlreadySet) {
+          final answer = await connection.createAnswer();
+          connection.setLocalDescription(answer);
+          final newConnection = connectionData.setAnswer(answer);
+          room.connections[entry.key] = newConnection;
+        }
+      } else if (connectionData.answer != null) {
+        connection.setRemoteDescription(connectionData.answer!);
+      }
+    }, onChanged: (entry) async {
+      final connection = connections.items.firstWhereOrNull((element) {
+        return entry.key == element.remote.id;
+      });
+      if (connection != null &&
+          entry.value.first.answer != entry.value.second.answer) {
+        final connectionData = entry.value.second;
+        if (connectionData.offerId == user.id) {
+          final answer = connectionData.answer!;
+          await connection.setAnswer(answer);
+        }
+      }
+    });
+    room.attendees.addDiffListener(onAdded: (newAttendee) async {
+      // log("_setupRoomListeners ${newAttendee.id}");
+      // if (user.id != newAttendee.id) {
+      //   late final RTCPeerConnection connection;
+      //   if (connectionBox.hasData) {
+      //     connection = connectionBox.data;
+      //     connectionBox.data = null;
+      //   } else {
+      //     connection = await createPeerConnection(configuration);
+      //   }
+      //   final peerConnection = await PeerConnection.createConnection(
+      //     user,
+      //     newAttendee,
+      //     connection,
+      //   );
+      //   connections.addItem(peerConnection);
+      // }
     }, onRemoved: (attendee) {
-      attendee.candidates.dispose();
+      final connection = connections.items
+          .firstWhereOrNull((element) => element.remote.id == attendee.id);
+      if (connection != null) {
+        connections.removeItem(connection);
+        connection.dispose();
+      }
     });
   }
 
@@ -113,7 +206,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
         if (state.room.attendees.isEmpty) {
           await _roomClient.closeRoom(state.room);
         }
-        state.connection.close();
+        dispose();
         return const NoRoomState();
       });
     }
@@ -136,24 +229,5 @@ class RoomNotifier extends StateNotifier<RoomState> {
       }));
     });
     return completer.future;
-  }
-
-  void _registerPeerConnectionListeners(
-    RTCPeerConnection connection,
-    ValueChanged<RtcIceCandidateModel> onCandidate,
-  ) {
-    connection.onIceCandidate = (RTCIceCandidate candidate) {
-      log('Got candidate: ${candidate.toMap()}');
-      onCandidate(RtcIceCandidateModel.fromCandidate(candidate));
-    };
-    connection.onIceGatheringState = (RTCIceGatheringState state) {
-      log('ICE gathering state changed: $state');
-    };
-    connection.onConnectionState = (RTCPeerConnectionState state) {
-      log('Connection state change: $state');
-    };
-    connection.onSignalingState = (RTCSignalingState state) {
-      log('Signaling state change: $state');
-    };
   }
 }

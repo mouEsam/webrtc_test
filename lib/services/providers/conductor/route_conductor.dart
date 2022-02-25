@@ -119,15 +119,20 @@ class RouteConductor extends StateNotifier<ConductorState>
 
   void handleState(ConductorState state) {
     log("Received conductor state ${state.runtimeType}");
+    _router.removeWhere((route) {
+      return [
+        LoadingRoute.name,
+        SplashRoute.name,
+        SignupRoute.name,
+        LoginRoute.name,
+      ].contains(route.name);
+    });
     if (state is LoadingConductorState) {
-      _router.popUntilRoot();
-      _router.replace(const LoadingRoute());
+      _router.push(const LoadingRoute());
     } else if (state is AuthRequiredConductorState) {
-      _router.popUntilRoot();
-      _router.replace<void>(const LoginRoute());
+      _router.push(const LoginRoute());
     } else if (state is MainConductorState) {
-      _router.popUntilRoot();
-      _router.replace<void>(const RoomsRoute());
+      _router.push(const RoomsRoute());
     }
   }
 }

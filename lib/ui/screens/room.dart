@@ -58,8 +58,8 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
   }
 
   Widget _buildBody(BuildContext context, WidgetRef ref, RoomState state) {
-    final renderer = ref.watch(roomRendererProvider);
     final roomController = ref.read(roomNotifierProvider.notifier);
+    final renderer = ref.watch(roomRendererProvider);
     if (state is ConnectedRoomState) {
       return Column(
         children: [
@@ -84,33 +84,20 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Align(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.rectangle,
-                          border: Border.all(width: 5, color: Colors.green),
-                        ),
-                        child:
-                            RTCVideoView(renderer.localRenderer, mirror: true),
-                      ),
+              child: Wrap(
+                children: [renderer.localRenderer]
+                    .followedBy(renderer.remoteRenderers.values)
+                    .map((renderer) {
+                  return Container(
+                    height: 200,
+                    width: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.rectangle,
+                      border: Border.all(width: 5, color: Colors.green),
                     ),
-                  ),
-                  Expanded(
-                    child: Align(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.rectangle,
-                          border: Border.all(width: 5, color: Colors.red),
-                        ),
-                        child: RTCVideoView(renderer.remoteRenderer),
-                      ),
-                    ),
-                  ),
-                ],
+                    child: RTCVideoView(renderer, mirror: true),
+                  );
+                }).toList(),
               ),
             ),
           ),

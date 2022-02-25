@@ -1,32 +1,39 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
+import 'package:webrtc_test/blocs/models/connection.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
+import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/data/remote/interfaces/room_client.dart';
 import 'package:webrtc_test/helpers/utils/box.dart';
 import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
+import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 import 'package:webrtc_test/helpers/utils/tuple.dart';
 
 import 'firebase.dart';
 
 final roomClientProvider = Provider<IRoomClient>((ref) {
-  return RoomClient(ref.read(firestoreProvider));
+  return RoomClient(ref.read(firestoreProvider), math.Random.secure());
 });
 
 class RoomClient implements IRoomClient {
+  static const _maxInt = 1 << 32;
   static const _roomsCollection = 'AvailableRooms';
   static const _iceCandidates = 'IceCandidates';
   static const _attendeesCollection = 'Attendees';
+  static const _connectionsCollection = 'Connections';
 
   final FirebaseFirestore _firestoreInstance;
+  final math.Random random;
 
-  const RoomClient(this._firestoreInstance);
+  const RoomClient(this._firestoreInstance, this.random);
 
   CollectionReference<RtcIceCandidateModel> getIceCandidates(
       DocumentReference attendeeDoc) {
@@ -43,17 +50,39 @@ class RoomClient implements IRoomClient {
     });
   }
 
-  CollectionReference<Attendee> getAttendees(DocumentReference roomDoc) {
+  CollectionReference<Connection> getConnections(DocumentReference roomDoc) {
+    return roomDoc.collection(_connectionsCollection).withConverter(
+        fromFirestore: (doc, options) {
+      final json = doc.data()!;
+      final offerJson = json['offer'];
+      final offer = _createRtcSessionDesc(offerJson);
+      final answerJson = json['answer'];
+      final answer =
+          offerJson == null ? null : _createRtcSessionDesc(answerJson);
+      final parties = json['parties'];
+      final offerId = json['offerId'];
+      final answerId = json['answerId'];
+      return Connection(parties, offerId, answerId, offer, answer);
+    }, toFirestore: (connection, options) {
+      return {
+        'offer': connection.offer.toMap(),
+        'answer': connection.answer?.toMap(),
+        'parties': connection.parties,
+        'offerId': connection.offerId,
+        'answerId': connection.answerId,
+      };
+    });
+  }
+
+  CollectionReference<Attendee> getAttendees(
+      DocumentReference roomDoc, String userId) {
     return roomDoc.collection(_attendeesCollection).withConverter(
         fromFirestore: (doc, options) {
       final json = doc.data()!;
-      final sessionJson = json['sessionDescription'];
-      final session =
-          RTCSessionDescription(sessionJson['sdp'], sessionJson['type']);
       final candidatesCollection = getIceCandidates(doc.reference);
       final _subBox = Box<StreamSubscription>();
       final candidates =
-          ListDiffNotifier<RtcIceCandidateModel>(() => _subBox.data.cancel());
+          ListDiffNotifier<RtcIceCandidateModel>((_) => _subBox.data.cancel());
       _subBox.data = candidatesCollection.snapshots().listen((event) {
         for (var candidate in event.docChanges) {
           final changeType = candidate.type;
@@ -64,25 +93,43 @@ class RoomClient implements IRoomClient {
           }
         }
       }, cancelOnError: true);
-      return Attendee(doc.id, json['name'], roomDoc.id, session, candidates);
+      final attendee = Attendee(
+        doc.id,
+        json['name'],
+        roomDoc.id,
+        json['secureId'],
+        candidates,
+      );
+      if (attendee.id == userId) {
+        candidates.addDiffListener(onAdded: (candidate) {
+          addCandidate(attendee, candidate);
+        });
+      }
+      return attendee;
     }, toFirestore: (attendee, options) {
       return {
         'name': attendee.name,
-        'sessionDescription': attendee.sessionDescription.toMap()
+        'secureId': attendee.secureId,
       };
     });
   }
 
-  CollectionReference<Room> get rooms {
+  RTCSessionDescription _createRtcSessionDesc(Map<String, dynamic> json) {
+    final answer = RTCSessionDescription(json['sdp'], json['type']);
+    return answer;
+  }
+
+  CollectionReference<Room> getRooms(String userId) {
     return _firestoreInstance.collection(_roomsCollection).withConverter(
         fromFirestore: (doc, options) {
       final json = doc.data()!;
       final name = json['name'];
-      final offerJson = json['offer'];
-      final offer = RTCSessionDescription(offerJson['sdp'], offerJson['type']);
+      final hostId = json['hostId'];
       final _subBox = Box<StreamSubscription>();
-      final attendees = ListDiffNotifier<Attendee>(() => _subBox.data.cancel());
-      _subBox.data = getAttendees(doc.reference).snapshots().listen((event) {
+      final attendees =
+          ListDiffNotifier<Attendee>((_) => _subBox.data.cancel());
+      _subBox.data =
+          getAttendees(doc.reference, userId).snapshots().listen((event) {
         log("Some changes here ${event.size}");
         for (var attendee in event.docChanges) {
           final changeType = attendee.type;
@@ -93,9 +140,35 @@ class RoomClient implements IRoomClient {
           }
         }
       }, cancelOnError: true);
-      return Room(doc.id, name, offer, attendees);
+      final _conSubBox = Box<StreamSubscription>();
+      final connections =
+          MapDiffNotifier<String, Connection>((_) => _conSubBox.data.cancel());
+      _conSubBox.data = getConnections(doc.reference)
+          .where('parties', arrayContains: userId)
+          .snapshots()
+          .listen((event) {
+        log("Some changes here ${event.size}");
+        for (var connectionDoc in event.docChanges) {
+          final changeType = connectionDoc.type;
+          final connection = connectionDoc.doc.data();
+          if (connection == null) continue;
+          final key =
+              connection.parties.firstWhere((element) => element != userId);
+          if (changeType == DocumentChangeType.removed) {
+            connections.removeItem(key);
+          } else {
+            connections[key] = connection;
+          }
+        }
+      }, cancelOnError: true);
+      connections.addDiffListener(onChanged: (entry) async {
+        if (entry.value.first.answer != entry.value.second.answer) {
+          await getConnections(doc.reference).add(entry.value.second);
+        }
+      });
+      return Room(doc.id, name, hostId, attendees, connections);
     }, toFirestore: (room, options) {
-      return {'name': room.name, 'offer': room.offer.toMap()};
+      return {'name': room.name, 'hostId': room.hostId};
     });
   }
 
@@ -114,37 +187,57 @@ class RoomClient implements IRoomClient {
 
   @override
   Future<Tuple2<Room, Attendee>> createRoom(
-    String name,
     String roomName,
-    RTCSessionDescription sessionDescription,
+    UserAccount user,
   ) async {
-    final room = Room('', roomName, sessionDescription, ListDiffNotifier());
-    final roomDoc = await rooms.add(room);
-    final attendee =
-        Attendee('', name, roomDoc.id, sessionDescription, ListDiffNotifier());
-    final attendeeDoc = await getAttendees(roomDoc).add(attendee);
-
+    final room =
+        Room('', roomName, user.id, ListDiffNotifier(), MapDiffNotifier());
+    final roomDoc = await getRooms(user.id).add(room);
+    final attendee = createAttendee(user, roomDoc.id, _maxInt);
+    final attendeeDoc = getAttendees(roomDoc, user.id).doc(attendee.id);
+    await attendeeDoc.set(attendee);
     final savedRoom = roomDoc.get().then((value) => value.data()!);
     final savedAttendee = attendeeDoc.get().then((value) => value.data()!);
-
     return Tuple2(await savedRoom, await savedAttendee);
   }
 
   @override
-  Future<Tuple2<Room, Attendee>> answerRoom(
+  Future<Tuple2<Room, Attendee>> joinRoom(
     AvailableRoom room,
-    String name,
-    RTCSessionDescription sessionDescription,
+    UserAccount user,
+    RTCSessionDescription offer,
   ) async {
-    final roomDoc = rooms.doc(room.id);
-    final attendee =
-        Attendee('', name, rooms.id, sessionDescription, ListDiffNotifier());
-    final attendeeDoc = await getAttendees(roomDoc).add(attendee);
+    final roomDoc = getRooms(user.id).doc(room.id);
+    final attendee = createAttendee(user, room.id);
+    final attendeeDoc = getAttendees(roomDoc, user.id).doc(attendee.id);
+    await attendeeDoc.set(attendee);
 
     final savedRoom = roomDoc.get().then((value) => value.data()!);
     final savedAttendee = attendeeDoc.get().then((value) => value.data()!);
 
-    return Tuple2(await savedRoom, await savedAttendee);
+    final connections =
+        await roomDoc.collection(_attendeesCollection).get().then((value) {
+      return value.docs.map((e) => e.id).map((id) async {
+        final connection = Connection([user.id, id], user.id, id, offer, null);
+        await getConnections(roomDoc).add(connection);
+        return connection;
+      }).toList();
+    });
+    final r = await savedRoom;
+    final a = await savedAttendee;
+    await Future.wait(connections);
+    return Tuple2(r, a);
+  }
+
+  Attendee createAttendee(UserAccount user, String roomId, [int? secureId]) {
+    secureId ??= random.nextInt(_maxInt - 1);
+    return Attendee(
+      user.id,
+      user.name,
+      roomId,
+      secureId,
+      ListDiffNotifier(),
+    );
   }
 
   @override
@@ -157,21 +250,21 @@ class RoomClient implements IRoomClient {
   @override
   Future<void> addCandidate(
       Attendee attendee, RtcIceCandidateModel candidate) async {
-    final roomDoc = rooms.doc(attendee.roomId);
-    final attendeeDoc = getAttendees(roomDoc).doc(attendee.id);
+    final roomDoc = getRooms(attendee.id).doc(attendee.roomId);
+    final attendeeDoc = getAttendees(roomDoc, attendee.id).doc(attendee.id);
     await getIceCandidates(attendeeDoc).add(candidate);
   }
 
   @override
   Future<void> exitRoom(Attendee attendee) async {
-    final roomDoc = rooms.doc(attendee.roomId);
-    final attendeeDoc = getAttendees(roomDoc).doc(attendee.id);
+    final roomDoc = getRooms(attendee.id).doc(attendee.roomId);
+    final attendeeDoc = getAttendees(roomDoc, attendee.id).doc(attendee.id);
     await attendeeDoc.delete();
   }
 
   @override
   Future<void> closeRoom(Room room) async {
-    final roomDoc = rooms.doc(room.id);
+    final roomDoc = getRooms("").doc(room.id);
     await roomDoc.delete();
   }
 }

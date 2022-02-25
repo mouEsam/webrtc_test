@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 class ListDiffNotifier<I> extends ChangeNotifier {
-  final VoidCallback? _onDisposed;
+  final ValueChanged<List<I>>? _onDisposed;
   final List<I> _items = [];
 
   final List<ValueChanged<I>> _addedListeners = [];
@@ -92,7 +92,7 @@ class ListDiffNotifier<I> extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _onDisposed?.call();
+    _onDisposed?.call(_items);
     _addedListeners.clear();
     _removedListeners.clear();
     super.dispose();

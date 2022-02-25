@@ -3,19 +3,19 @@ import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
+import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/helpers/utils/tuple.dart';
 
 abstract class IRoomClient {
   Future<Tuple2<Room, Attendee>> createRoom(
-    String name,
     String roomName,
-    RTCSessionDescription sessionDescription,
+    UserAccount user,
   );
 
-  Future<Tuple2<Room, Attendee>> answerRoom(
+  Future<Tuple2<Room, Attendee>> joinRoom(
     AvailableRoom room,
-    String name,
-    RTCSessionDescription sessionDescription,
+    UserAccount user,
+    RTCSessionDescription offer,
   );
 
   Future<List<AvailableRoom>> getAvailableRooms();
