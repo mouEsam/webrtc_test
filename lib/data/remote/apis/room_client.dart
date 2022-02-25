@@ -58,10 +58,16 @@ class RoomClient implements IRoomClient {
       final answerJson = json['answer'];
       final answer =
           answerJson == null ? null : _createRtcSessionDesc(answerJson);
-      final parties = json['parties'];
+      final parties = json['parties'] as List;
       final offerId = json['offerId'];
       final answerId = json['answerId'];
-      return Connection(parties, offerId, answerId, offer, answer);
+      return Connection(
+        parties.cast<String>().toList(),
+        offerId,
+        answerId,
+        offer,
+        answer,
+      );
     }, toFirestore: (connection, options) {
       return {
         'offer': connection.offer.toMap(),
@@ -151,8 +157,10 @@ class RoomClient implements IRoomClient {
           final changeType = connectionDoc.type;
           final connection = connectionDoc.doc.data();
           if (connection == null) continue;
-          final key =
-              connection.parties.firstWhere((element) => element != userId);
+          final list = connection.parties.toList();
+          list.remove(userId);
+          if (list.isEmpty) continue;
+          final key = list.first;
           if (changeType == DocumentChangeType.removed) {
             connections.removeItem(key);
           } else {
@@ -214,7 +222,10 @@ class RoomClient implements IRoomClient {
 
     final connections =
         await roomDoc.collection(_attendeesCollection).get().then((value) {
-      return value.docs.map((e) => e.id).map((id) async {
+      return value.docs
+          .map((e) => e.id)
+          .where((id) => user.id != id)
+          .map((id) async {
         final connection = Connection([user.id, id], user.id, id, offer, null);
         await getConnections(roomDoc).add(connection);
         return connection;

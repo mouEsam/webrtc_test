@@ -91,7 +91,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
       );
       final user = data.second;
       final room = data.first;
-      _setupRoomListeners(room, user, connection);
+      _setupRoomListeners(room, user, offer, connection);
       return ConnectedRoomState(
         room: data.first,
         user: data.second,
@@ -103,6 +103,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   void _setupRoomListeners(
     Room room,
     Attendee user, [
+    RTCSessionDescription? offer,
     RTCPeerConnection? connection,
   ]) {
     final connectionBox = Box(connection);
@@ -138,20 +139,20 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final connectionData = entry.value;
       if (connectionData.offerId == user.id) {
         if (!localAlreadySet) {
-          connection.setLocalDescription(connectionData.offer);
+          await connection.setLocalDescription(offer ?? connectionData.offer);
         }
       } else {
-        connection.setRemoteDescription(connectionData.offer);
+        await connection.setRemoteDescription(connectionData.offer);
       }
       if (connectionData.answerId == user.id) {
         if (!localAlreadySet) {
           final answer = await connection.createAnswer();
-          connection.setLocalDescription(answer);
+          await connection.setLocalDescription(answer);
           final newConnection = connectionData.setAnswer(answer);
           room.connections[entry.key] = newConnection;
         }
       } else if (connectionData.answer != null) {
-        connection.setRemoteDescription(connectionData.answer!);
+        await connection.setRemoteDescription(connectionData.answer!);
       }
     }, onChanged: (entry) async {
       final connection = connections.items.firstWhereOrNull((element) {
