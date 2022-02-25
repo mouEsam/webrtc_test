@@ -14,3 +14,8 @@ class AuthRequiredNavigationEvent extends NavigationEvent {
   final ValueChanged<bool>? onResult;
   const AuthRequiredNavigationEvent(this.onResult);
 }
+
+class ReAuthRequiredNavigationEvent extends AuthRequiredNavigationEvent {
+  const ReAuthRequiredNavigationEvent(ValueChanged<bool>? onResult)
+      : super(onResult);
+}

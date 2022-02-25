@@ -45,7 +45,7 @@ class RouteConductor extends StateNotifier<ConductorState>
       : super(InitialConductorState()) {
     final beginStream =
         _eventBus.on<BeginNavigationEvent>().first.asStream().cast<void>();
-    final stream = _combine<void, UserState>(
+    final stream = _combine(
       beginStream,
       _userState,
       StatesComplex.new,
@@ -88,20 +88,26 @@ class RouteConductor extends StateNotifier<ConductorState>
 
   void handleNavigationEvent(NavigationEvent event) async {
     if (event is AuthRequiredNavigationEvent) {
-      final finished = _router.push(const LoginRoute());
-      if (event.onResult != null) {
-        _subscription.pause(Future(() async {
-          final isAuth = _userState
-              .firstWhere((element) => element is AuthenticatedUserState);
-          final done = await Future.any([isAuth, finished]);
-          if (done is AuthenticatedUserState) {
-            state = MainConductorState(0);
-            event.onResult?.call(true);
-          } else {
-            event.onResult?.call(false);
-          }
-        }));
-      }
+      await _handleAuthRequired<AuthenticatedUserState>(event.onResult);
+    } else if (event is ReAuthRequiredNavigationEvent) {
+      await _handleAuthRequired<ReAuthenticatedUserState>(event.onResult);
+    }
+  }
+
+  Future<void> _handleAuthRequired<T extends UserState>(
+      ValueChanged<bool>? onResult) async {
+    final finished = _router.push(const LoginRoute());
+    if (onResult != null) {
+      _subscription.pause(Future(() async {
+        final isAuth = _userState.firstWhere((element) => element is T);
+        final done = await Future.any([isAuth, finished]);
+        if (done is AuthenticatedUserState) {
+          state = MainConductorState(0);
+          onResult.call(true);
+        } else {
+          onResult.call(false);
+        }
+      }));
     }
   }
 
@@ -110,11 +116,12 @@ class RouteConductor extends StateNotifier<ConductorState>
     log("Received user state ${userState.runtimeType}");
     if (userState is LoadingUserState) {
       return LoadingConductorState();
-    } else if (userState is AuthenticatedUserState) {
+    } else if (userState is LoggedInUserState) {
       return MainConductorState();
-    } else {
+    } else if (userState is LoggedOutUserState) {
       return AuthRequiredConductorState();
     }
+    return null;
   }
 
   void handleState(ConductorState state) {

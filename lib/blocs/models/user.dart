@@ -11,6 +11,8 @@ class UserAccount extends Equatable {
     return UserAccount(json['id'], json['name'], user);
   }
 
+  bool get isExpired => false;
+
   @override
   get props => [
         id,

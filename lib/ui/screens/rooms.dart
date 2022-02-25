@@ -1,9 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:webrtc_test/blocs/models/available_room.dart';
+import 'package:webrtc_test/helpers/providers/page_state.dart';
 import 'package:webrtc_test/helpers/utils/extensions.dart';
-import 'package:webrtc_test/providers/rooms/room_notifier.dart';
-import 'package:webrtc_test/providers/rooms/room_states.dart';
+import 'package:webrtc_test/providers/rooms/rooms_notifier.dart';
 import 'package:webrtc_test/routes/app_router.gr.dart';
 
 class RoomsScreen extends ConsumerWidget {
@@ -18,7 +19,7 @@ class RoomsScreen extends ConsumerWidget {
         title: const Text('Login'),
       ),
       body: _buildBody(context, ref, state),
-      floatingActionButton: ifTrue(state is LoadedRoomsState, () {
+      floatingActionButton: ifTrue(state is LoadedPageState, () {
         return FloatingActionButton(
             child: const Icon(Icons.add),
             onPressed: () {
@@ -33,19 +34,19 @@ class RoomsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, RoomsState state) {
+  Widget _buildBody(BuildContext context, WidgetRef ref, PageState state) {
     Future<void> refresh() async {
       final notifier = ref.read(roomsNotifierProvider.notifier);
       return notifier.loadRooms();
     }
 
-    if (state is LoadedRoomsState) {
+    if (state is LoadedPageState<List<AvailableRoom>>) {
       return RefreshIndicator(
         onRefresh: refresh,
         child: ListView.builder(
-            itemCount: state.rooms.length,
+            itemCount: state.data.length,
             itemBuilder: (context, index) {
-              final room = state.rooms[index];
+              final room = state.data[index];
               return ListTile(
                 title: Text(room.name),
                 onTap: () async {
@@ -58,7 +59,7 @@ class RoomsScreen extends ConsumerWidget {
               );
             }),
       );
-    } else if (state is LoadingRoomsState) {
+    } else if (state is LoadingPageState) {
       return const Center(
         child: CircularProgressIndicator(),
       );

@@ -12,8 +12,9 @@ class LoadingPageState extends PageState {
   const LoadingPageState();
 }
 
-class LoadedPageState extends PageState {
-  const LoadedPageState();
+class LoadedPageState<T> extends PageState {
+  final T data;
+  const LoadedPageState(this.data);
 }
 
 class ErrorPageState extends PageState {

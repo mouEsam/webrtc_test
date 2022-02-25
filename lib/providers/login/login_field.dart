@@ -40,7 +40,7 @@ class LoginField extends PageNotifier {
     return safeAttempt(
       () async {
         await _authClient.login(emailField.text, passwordField.text);
-        return const LoadedPageState();
+        return const LoadedPageState(null);
       },
       errorFactory: OperationPageError.fromError,
     );
@@ -50,7 +50,7 @@ class LoginField extends PageNotifier {
     return safeAttempt(
       () async {
         await _authClient.anonymousLogin(nameField.text);
-        return const LoadedPageState();
+        return const LoadedPageState(null);
       },
       errorFactory: OperationPageError.fromError,
     );

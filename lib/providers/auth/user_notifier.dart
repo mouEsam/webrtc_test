@@ -40,9 +40,19 @@ class UserNotifier extends StateNotifier<UserState> {
 
   UserState handleUser(UserAccount? user) {
     if (user != null) {
-      return AuthenticatedUserState(user);
+      if (user.isExpired) {
+        return ExpiredUserState(user);
+      } else if (state is AuthenticatedUserState || state is ExpiredUserState) {
+        return ReAuthenticatedUserState(user);
+      } else {
+        return LoggedInUserState(user);
+      }
     } else {
-      return const UnAuthenticatedUserState();
+      if (state is AuthenticatedUserState) {
+        return const LoggedOutUserState();
+      } else {
+        return const UnAuthenticatedUserState();
+      }
     }
   }
 }

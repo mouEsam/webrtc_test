@@ -41,7 +41,7 @@ class SignupField extends PageNotifier {
       () async {
         await _authClient.signup(
             nameField.text, emailField.text, passwordField.text);
-        return const LoadedPageState();
+        return const LoadedPageState(null);
       },
       errorFactory: OperationPageError.fromError,
     );

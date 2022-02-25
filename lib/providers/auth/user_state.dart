@@ -8,11 +8,28 @@ class LoadingUserState extends UserState {
   const LoadingUserState();
 }
 
-class AuthenticatedUserState extends UserState {
+abstract class AuthenticatedUserState extends UserState {
   final UserAccount userAccount;
   const AuthenticatedUserState(this.userAccount);
 }
 
+class LoggedInUserState extends AuthenticatedUserState {
+  const LoggedInUserState(UserAccount userAccount) : super(userAccount);
+}
+
+class ReAuthenticatedUserState extends AuthenticatedUserState {
+  const ReAuthenticatedUserState(UserAccount userAccount) : super(userAccount);
+}
+
 class UnAuthenticatedUserState extends UserState {
   const UnAuthenticatedUserState();
+}
+
+class ExpiredUserState extends UnAuthenticatedUserState {
+  final UserAccount userAccount;
+  const ExpiredUserState(this.userAccount);
+}
+
+class LoggedOutUserState extends UnAuthenticatedUserState {
+  const LoggedOutUserState();
 }
