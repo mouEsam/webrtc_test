@@ -40,36 +40,38 @@ class RoomsScreen extends ConsumerWidget {
       return notifier.loadRooms();
     }
 
-    if (state is LoadedPageState<List<AvailableRoom>>) {
-      return RefreshIndicator(
-        onRefresh: refresh,
-        child: ListView.builder(
-            itemCount: state.data.length,
-            itemBuilder: (context, index) {
-              final room = state.data[index];
-              return ListTile(
-                title: Text(room.name),
-                onTap: () async {
-                  const name = "Mostafa";
-                  AutoRouter.of(context).push(RoomRoute(
-                    name: name,
-                    availableRoom: room,
-                  ));
-                },
-              );
-            }),
-      );
-    } else if (state is LoadingPageState) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    } else {
-      return Center(
-        child: ElevatedButton(
-          child: const Text('Load Rooms'),
-          onPressed: refresh,
-        ),
-      );
-    }
+    return SizedBox(
+      child: state.when<Widget, List<AvailableRoom>>(onData: (rooms) {
+        return RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView.builder(
+              itemCount: rooms.length,
+              itemBuilder: (context, index) {
+                final room = rooms[index];
+                return ListTile(
+                  title: Text(room.name),
+                  onTap: () async {
+                    const name = "Mostafa";
+                    AutoRouter.of(context).push(RoomRoute(
+                      name: name,
+                      availableRoom: room,
+                    ));
+                  },
+                );
+              }),
+        );
+      }, onLoading: () {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }, onOther: (_) {
+        return Center(
+          child: ElevatedButton(
+            child: const Text('Load Rooms'),
+            onPressed: refresh,
+          ),
+        );
+      }),
+    );
   }
 }
