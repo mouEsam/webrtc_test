@@ -110,7 +110,7 @@ class RoomClient implements IRoomClient {
         candidates.addDiffListener(onAdded: (candidate) {
           if (candidate.id == null) {
 
-addCandidate(attendee, candidate);
+addCandidate(attendee, candidate).then((value) => candidates.removeItem(candidate) );
 
 }
            
