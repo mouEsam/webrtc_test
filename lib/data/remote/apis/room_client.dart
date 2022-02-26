@@ -41,6 +41,7 @@ class RoomClient implements IRoomClient {
         fromFirestore: (doc, options) {
       final json = doc.data()!;
       return RtcIceCandidateModel(
+        doc.id,
         json['candidate'],
         json['sdpMid'],
         json['sdpMLineIndex'],
@@ -107,7 +108,12 @@ class RoomClient implements IRoomClient {
       );
       if (attendee.id == userId) {
         candidates.addDiffListener(onAdded: (candidate) {
-          addCandidate(attendee, candidate);
+          if (candidate.id == null) {
+
+addCandidate(attendee, candidate);
+
+}
+           
         });
       }
       return attendee;
