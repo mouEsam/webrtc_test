@@ -63,6 +63,7 @@ class RoomClient implements IRoomClient {
       final offerId = json['offerId'];
       final answerId = json['answerId'];
       return Connection(
+        doc.id,
         parties.cast<String>().toList(),
         offerId,
         answerId,
@@ -149,8 +150,10 @@ class RoomClient implements IRoomClient {
         }
       }, cancelOnError: true);
       connections.addDiffListener(onChanged: (entry) async {
-        if (entry.value.first.answer != entry.value.second.answer) {
-          await getConnections(doc.reference).add(entry.value.second);
+        if (entry.value.first != entry.value.second) {
+          await getConnections(doc.reference)
+              .doc(entry.value.second.id)
+              .set(entry.value.second);
         }
       });
       return Room(doc.id, name, hostId, attendees, connections);
@@ -206,7 +209,8 @@ class RoomClient implements IRoomClient {
           .map((e) => e.id)
           .where((id) => user.id != id)
           .map((id) async {
-        final connection = Connection([user.id, id], user.id, id, offer, null);
+        final connection =
+            Connection(null, [user.id, id], user.id, id, offer, null);
         await getConnections(roomDoc).add(connection);
         return connection;
       }).toList();

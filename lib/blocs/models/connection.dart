@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class Connection extends Equatable {
+  final String? id;
   final List<String> parties;
   final String? offerId;
   final String? answerId;
@@ -9,6 +10,7 @@ class Connection extends Equatable {
   final RTCSessionDescription? answer;
 
   const Connection(
+    this.id,
     this.parties,
     this.offerId,
     this.answerId,
@@ -17,15 +19,16 @@ class Connection extends Equatable {
   );
 
   Connection setAnswer(RTCSessionDescription answer) {
-    return Connection(parties, offerId, answerId, offer, answer);
+    return Connection(null, parties, offerId, answerId, offer, answer);
   }
 
   @override
   get props => [
+        id,
         parties,
         offerId,
         answerId,
-        offer,
-        answer,
+        offer.sdp,
+        answer?.sdp,
       ];
 }

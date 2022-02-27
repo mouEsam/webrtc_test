@@ -223,7 +223,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
         if (state.room.attendees.isEmpty) {
           await _roomClient.closeRoom(state.room);
         }
-        dispose();
         return const NoRoomState();
       });
     }
