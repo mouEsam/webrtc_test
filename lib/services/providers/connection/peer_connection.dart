@@ -102,9 +102,11 @@ class PeerConnection extends ChangeNotifier {
       _localCandidates.addItem(RtcIceCandidateModel.fromCandidate(candidate));
     };
     connection.onAddTrack = (stream, track) {
+      remoteStreams[stream.id] ??= stream;
       remoteStreams[stream.id]?.addTrack(track);
     };
     connection.onRemoveTrack = (stream, track) {
+      remoteStreams[stream.id] ??= stream;
       remoteStreams[stream.id]?.removeTrack(track);
     };
     connection.onAddStream = (stream) {
@@ -124,6 +126,8 @@ class PeerConnection extends ChangeNotifier {
   }
 
   void _unregisterStreamCallbacks(MediaStream localStream) {
-    connection.removeStream(localStream);
+    localStream.getTracks().forEach((track) {
+      connection.removeTrack(track, localStream);
+    });
   }
 }
