@@ -10,7 +10,7 @@ import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 class PeerConnection extends ChangeNotifier {
   final RTCPeerConnection connection;
   final String id;
-  final Attendee remote; // other side
+  final Attendee remote;
   final ListDiffNotifier<RtcIceCandidateModel> _localCandidates;
   final ListDiffNotifier<RtcIceCandidateModel> _remoteCandidates;
   final MapDiffNotifier<String, MediaStream> remoteStreams =
