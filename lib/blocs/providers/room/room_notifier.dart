@@ -108,7 +108,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
       openUserMedia();
       connection = await createPeerConnection(configuration);
       _localStream?.getTracks().forEach((track) {
-        connection!.addTrack(track);
+        connection!.addTrack(track, _localStream!);
       });
       final offer = await connection!.createOffer();
       connection!.setLocalDescription(offer);
@@ -170,7 +170,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
           localAlreadySet = false;
           connection = await createPeerConnection(configuration);
           _localStream?.getTracks().forEach((track) {
-            connection.addTrack(track);
+            connection.addTrack(track, _localStream!);
           });
         }
         peerConnection = await PeerConnection.createConnection(
