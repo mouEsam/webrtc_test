@@ -1,6 +1,7 @@
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
+import 'package:webrtc_test/blocs/models/connection.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
@@ -32,4 +33,6 @@ abstract class IRoomClient {
   Future<void> exitRoom(Attendee attendee);
 
   Future<void> closeRoom(Room room);
+
+  Future<void> addConnection(Room room, UserAccount userAccount, Connection connection);
 }

@@ -196,7 +196,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
           final answer = await connection.createAnswer();
           await connection.setLocalDescription(answer);
           final newConnection = connectionData.setAnswer(answer);
-          room.connections[entry.key] = newConnection;
+          _roomClient.addConnection(room, userAccount, newConnection);
         }
       }
     }, onChanged: (entry) async {

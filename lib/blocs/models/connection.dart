@@ -17,6 +17,7 @@ class Connection extends Equatable {
     this.offer,
     this.answer,
   );
+
   const Connection.init(
     this.parties,
     this.offerId,
@@ -26,7 +27,7 @@ class Connection extends Equatable {
         answer = null;
 
   Connection setAnswer(RTCSessionDescription answer) {
-    return Connection(null, parties, offerId, answerId, offer, answer);
+    return Connection(id, parties, offerId, answerId, offer, answer);
   }
 
   @override

@@ -149,13 +149,6 @@ class RoomClient implements IRoomClient {
           }
         }
       });
-      connections.addDiffListener(onChanged: (entry) async {
-        if (entry.value.first != entry.value.second) {
-          await getConnections(doc.reference)
-              .doc(entry.value.second.id)
-              .set(entry.value.second);
-        }
-      });
       return Room(doc.id, name, hostId, attendees, connections);
     }, toFirestore: (room, options) {
       return {'name': room.name, 'hostId': room.hostId};
@@ -278,6 +271,14 @@ class RoomClient implements IRoomClient {
     final roomDoc = getRooms(attendee.id).doc(attendee.roomId);
     final attendeeDoc = getAttendees(roomDoc, attendee.id).doc(attendee.id);
     await getIceCandidates(attendeeDoc).add(candidate);
+  }
+
+  @override
+  Future<void> addConnection(
+      Room room, UserAccount userAccount, Connection connection) {
+    final roomDoc = getRooms(userAccount.id).doc(room.id);
+    final connectionDoc = getConnections(roomDoc).doc(connection.id);
+    return connectionDoc.set(connection);
   }
 
   @override
