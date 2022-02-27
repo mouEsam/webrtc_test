@@ -84,21 +84,25 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Wrap(
-                children: [renderer.localRenderer]
-                    .followedBy(renderer.remoteRenderers.values)
-                    .map((renderer) {
-                  return Container(
-                    height: 200,
-                    width: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.rectangle,
-                      border: Border.all(width: 5, color: Colors.green),
-                    ),
-                    child: RTCVideoView(renderer, mirror: true),
-                  );
-                }).toList(),
-              ),
+              child: AnimatedBuilder(
+                  animation: renderer.remoteRenderers,
+                  builder: (context, _) {
+                    return Wrap(
+                      children: [renderer.localRenderer]
+                          .followedBy(renderer.remoteRenderers.values)
+                          .map((renderer) {
+                        return Container(
+                          height: 200,
+                          width: 200,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.rectangle,
+                            border: Border.all(width: 5, color: Colors.green),
+                          ),
+                          child: RTCVideoView(renderer, mirror: true),
+                        );
+                      }).toList(),
+                    );
+                  }),
             ),
           ),
           const SizedBox(height: 8),
