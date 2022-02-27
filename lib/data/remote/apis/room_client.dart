@@ -209,8 +209,7 @@ class RoomClient implements IRoomClient {
           .map((e) => e.id)
           .where((id) => user.id != id)
           .map((id) async {
-        final connection =
-            Connection(null, [user.id, id], user.id, id, offer, null);
+        final connection = Connection.init([user.id, id], user.id, id, offer);
         await getConnections(roomDoc).add(connection);
         return connection;
       }).toList();
