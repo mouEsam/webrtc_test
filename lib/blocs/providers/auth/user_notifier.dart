@@ -6,7 +6,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/data/remote/apis/auth_client.dart';
 import 'package:webrtc_test/data/remote/interfaces/auth_client.dart';
-import 'package:webrtc_test/providers/auth/user_state.dart';
+import 'package:webrtc_test/blocs/providers/auth/user_state.dart';
 
 final userProvider = StateNotifierProvider<UserNotifier, UserState>((ref) {
   return UserNotifier(ref.read(authClientProvider));

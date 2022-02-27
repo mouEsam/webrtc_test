@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
-import 'package:webrtc_test/providers/room/room_notifier.dart';
-import 'package:webrtc_test/providers/room/room_renderer.dart';
-import 'package:webrtc_test/providers/room/room_states.dart';
+import 'package:webrtc_test/blocs/providers/room/room_notifier.dart';
+import 'package:webrtc_test/blocs/providers/room/room_renderer.dart';
+import 'package:webrtc_test/blocs/providers/room/room_states.dart';
 
 class RoomScreen extends ConsumerStatefulWidget {
   final String name;

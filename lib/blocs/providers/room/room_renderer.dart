@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
-import 'package:webrtc_test/providers/room/room_notifier.dart';
-import 'package:webrtc_test/providers/room/room_states.dart';
+import 'package:webrtc_test/blocs/providers/room/room_notifier.dart';
+import 'package:webrtc_test/blocs/providers/room/room_states.dart';
 
 final roomRendererProvider = StateProvider.autoDispose((ref) {
   final renderer = RoomRenderer(

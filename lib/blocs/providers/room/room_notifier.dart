@@ -10,13 +10,13 @@ import 'package:webrtc_test/blocs/models/available_room.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
+import 'package:webrtc_test/blocs/providers/auth/user_notifier.dart';
+import 'package:webrtc_test/blocs/providers/auth/user_state.dart';
+import 'package:webrtc_test/blocs/providers/room/room_states.dart';
 import 'package:webrtc_test/data/remote/apis/room_client.dart';
 import 'package:webrtc_test/data/remote/interfaces/room_client.dart';
 import 'package:webrtc_test/helpers/utils/box.dart';
 import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
-import 'package:webrtc_test/providers/auth/user_notifier.dart';
-import 'package:webrtc_test/providers/auth/user_state.dart';
-import 'package:webrtc_test/providers/room/room_states.dart';
 import 'package:webrtc_test/services/providers/connection/peer_connection.dart';
 
 final roomNotifierProvider =

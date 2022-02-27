@@ -2,9 +2,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
+import 'package:webrtc_test/blocs/providers/rooms/rooms_notifier.dart';
 import 'package:webrtc_test/helpers/providers/page_state.dart';
 import 'package:webrtc_test/helpers/utils/extensions.dart';
-import 'package:webrtc_test/providers/rooms/rooms_notifier.dart';
 import 'package:webrtc_test/routes/app_router.gr.dart';
 
 class RoomsScreen extends ConsumerWidget {

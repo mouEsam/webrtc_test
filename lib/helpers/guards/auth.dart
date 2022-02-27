@@ -3,8 +3,8 @@ import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/events/event.dart';
 import 'package:webrtc_test/events/navigation_events.dart';
 import 'package:webrtc_test/helpers/utils/extensions.dart';
-import 'package:webrtc_test/providers/auth/user_notifier.dart';
-import 'package:webrtc_test/providers/auth/user_state.dart';
+import 'package:webrtc_test/blocs/providers/auth/user_notifier.dart';
+import 'package:webrtc_test/blocs/providers/auth/user_state.dart';
 
 class AuthRedirectGuard extends AuthGuard {
   AuthRedirectGuard(ProviderRef ref) : super(ref, redirect: true);
