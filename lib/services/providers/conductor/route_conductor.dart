@@ -118,7 +118,8 @@ class RouteConductor extends StateNotifier<ConductorState>
       return LoadingConductorState();
     } else if (userState is LoggedInUserState) {
       return MainConductorState();
-    } else if (userState is LoggedOutUserState) {
+    } else if (userState is LoggedOutUserState ||
+        userState is InitialUnAuthenticatedUserState) {
       return AuthRequiredConductorState();
     }
     return null;

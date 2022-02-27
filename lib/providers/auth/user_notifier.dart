@@ -51,7 +51,7 @@ class UserNotifier extends StateNotifier<UserState> {
       if (state is AuthenticatedUserState) {
         return const LoggedOutUserState();
       } else {
-        return const UnAuthenticatedUserState();
+        return const InitialUnAuthenticatedUserState();
       }
     }
   }

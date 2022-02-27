@@ -31,6 +31,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   final UserNotifier _userAccount;
   final IRoomClient _roomClient;
   late UserAccount userAccount;
+  ListDiffNotifier<RtcIceCandidateModel>? _candidates;
   final ListDiffNotifier<PeerConnection> connections =
       ListDiffNotifier((connections) {
     for (var connection in connections) {
@@ -64,6 +65,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   void dispose() {
     super.dispose();
     connections.dispose();
+    _candidates?.dispose();
   }
 
   Future<void> createRoom(String roomName, String name) async {
@@ -71,12 +73,16 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
-      final userCandidates = _roomClient.getUserCandidates(
+      _candidates = _roomClient.getUserCandidates(
         room,
         userAccount,
         user,
       );
-      _setupRoomListeners(room, user, userCandidates);
+      _setupRoomListeners(
+        room,
+        user,
+        _candidates!,
+      );
       return ConnectedRoomState(
         room: data.first,
         user: data.second,
@@ -97,7 +103,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
       );
       final user = data.second;
       final room = data.first;
-      final userCandidates = _roomClient.getUserCandidates(
+      _candidates = _roomClient.getUserCandidates(
         room,
         userAccount,
         user,
@@ -105,7 +111,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
       _setupRoomListeners(
         room,
         user,
-        userCandidates,
+        _candidates!,
         offer,
         connection,
       );

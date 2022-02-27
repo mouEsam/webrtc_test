@@ -21,7 +21,7 @@ class ReAuthenticatedUserState extends AuthenticatedUserState {
   const ReAuthenticatedUserState(UserAccount userAccount) : super(userAccount);
 }
 
-class UnAuthenticatedUserState extends UserState {
+abstract class UnAuthenticatedUserState extends UserState {
   const UnAuthenticatedUserState();
 }
 
@@ -32,4 +32,8 @@ class ExpiredUserState extends UnAuthenticatedUserState {
 
 class LoggedOutUserState extends UnAuthenticatedUserState {
   const LoggedOutUserState();
+}
+
+class InitialUnAuthenticatedUserState extends UnAuthenticatedUserState {
+  const InitialUnAuthenticatedUserState();
 }
