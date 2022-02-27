@@ -191,13 +191,13 @@ class RoomNotifier extends StateNotifier<RoomState> {
           await connection.setRemoteDescription(connectionData.answer!);
         }
       } else if (connectionData.answerId == user.id) {
+        await connection.setRemoteDescription(connectionData.offer);
         if (!localAlreadySet) {
           final answer = await connection.createAnswer();
           await connection.setLocalDescription(answer);
           final newConnection = connectionData.setAnswer(answer);
           room.connections[entry.key] = newConnection;
         }
-        await connection.setRemoteDescription(connectionData.offer);
       }
     }, onChanged: (entry) async {
       final connection = connections.items.firstWhereOrNull((element) {
