@@ -4,13 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
+import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
 import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 
 class PeerConnection extends ChangeNotifier {
   final RTCPeerConnection connection;
   final Attendee _local; // user
   final Attendee remote; // other side
-  MediaStream? _localStream;
+  final ListDiffNotifier<RtcIceCandidateModel> _localCandidates;
+  final ListDiffNotifier<RtcIceCandidateModel> _remoteCandidates;
   final MapDiffNotifier<String, MediaStream> remoteStreams =
       MapDiffNotifier((streams) {
     for (final stream in streams.values) {
@@ -20,8 +22,15 @@ class PeerConnection extends ChangeNotifier {
       stream.dispose();
     }
   });
+  MediaStream? _localStream;
 
-  PeerConnection._(this.connection, this._local, this.remote) {
+  PeerConnection._(
+    this.connection,
+    this._local,
+    this.remote,
+    this._localCandidates,
+    this._remoteCandidates,
+  ) {
     _registerCallbacks();
   }
 
@@ -34,27 +43,20 @@ class PeerConnection extends ChangeNotifier {
     _localStream = localStream;
   }
 
-  // static Future<PeerConnection> createConnection(
-  //   bool isHost,
-  //   Attendee host,
-  //   Attendee guest,
-  //   RTCPeerConnection connection,
-  // ) async {
-  //   final local = isHost ? host : guest;
-  //   final remote = isHost ? guest : host;
-  //   await connection.setLocalDescription(isHost ? host.offer : guest.answer);
-  //   await connection.setRemoteDescription(isHost ? guest.answer : host.offer);
-  //   final _connection = PeerConnection._(connection, local, remote);
-  //   _connection._remoteStream = await createLocalMediaStream(remote.id);
-  //   return _connection;
-  // }
-
   static Future<PeerConnection> createConnection(
     Attendee local,
     Attendee remote,
+    ListDiffNotifier<RtcIceCandidateModel> localCandidates,
+    ListDiffNotifier<RtcIceCandidateModel> remoteCandidates,
     RTCPeerConnection connection,
   ) async {
-    final _connection = PeerConnection._(connection, local, remote);
+    final _connection = PeerConnection._(
+      connection,
+      local,
+      remote,
+      localCandidates,
+      remoteCandidates,
+    );
     return _connection;
   }
 
@@ -84,18 +86,18 @@ class PeerConnection extends ChangeNotifier {
   @override
   void dispose() {
     super.dispose();
-    remote.candidates.dispose();
+    _remoteCandidates.dispose();
     remoteStreams.dispose();
     connection.close();
   }
 
   void _registerCallbacks() {
-    remote.candidates.addDiffListener(onAdded: (candidate) {
+    _remoteCandidates.addDiffListener(onAdded: (candidate) {
       connection.addCandidate(candidate.iceCandidate);
     });
     connection.onIceCandidate = (candidate) {
       log('Got candidate: ${candidate.toMap()}');
-      _local.candidates.addItem(RtcIceCandidateModel.fromCandidate(candidate));
+      _localCandidates.addItem(RtcIceCandidateModel.fromCandidate(candidate));
     };
     connection.onAddTrack = (stream, track) {
       remoteStreams[stream.id]?.addTrack(track);

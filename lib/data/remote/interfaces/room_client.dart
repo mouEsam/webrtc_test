@@ -4,6 +4,7 @@ import 'package:webrtc_test/blocs/models/available_room.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
+import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
 import 'package:webrtc_test/helpers/utils/tuple.dart';
 
 abstract class IRoomClient {
@@ -19,6 +20,12 @@ abstract class IRoomClient {
   );
 
   Future<List<AvailableRoom>> getAvailableRooms();
+
+  ListDiffNotifier<RtcIceCandidateModel> getUserCandidates(
+    Room room,
+    UserAccount user,
+    Attendee attendee,
+  );
 
   Future<void> addCandidate(Attendee attendee, RtcIceCandidateModel candidate);
 

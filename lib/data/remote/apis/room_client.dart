@@ -85,38 +85,12 @@ class RoomClient implements IRoomClient {
     return roomDoc.collection(_attendeesCollection).withConverter(
         fromFirestore: (doc, options) {
       final json = doc.data()!;
-      final candidatesCollection = getIceCandidates(doc.reference);
-      final _subBox = Box<StreamSubscription>();
-      final candidates =
-          ListDiffNotifier<RtcIceCandidateModel>((_) => _subBox.data.cancel());
-      _subBox.data = candidatesCollection.snapshots().listen((event) {
-        for (var candidate in event.docChanges) {
-          final changeType = candidate.type;
-          if (changeType == DocumentChangeType.added) {
-            candidates.addItem(candidate.doc.data()!);
-          } else if (changeType == DocumentChangeType.removed) {
-            candidates.removeItem(candidate.doc.data()!);
-          }
-        }
-      }, cancelOnError: true);
-      final attendee = Attendee(
+      return Attendee(
         doc.id,
         json['name'],
         roomDoc.id,
         json['secureId'],
-        candidates,
       );
-      if (attendee.id == userId) {
-        candidates.addDiffListener(onAdded: (candidate) {
-          if (candidate.id == null) {
-
-addCandidate(attendee, candidate).then((value) => candidates.removeItem(candidate) );
-
-}
-           
-        });
-      }
-      return attendee;
     }, toFirestore: (attendee, options) {
       return {
         'name': attendee.name,
@@ -250,7 +224,6 @@ addCandidate(attendee, candidate).then((value) => candidates.removeItem(candidat
       user.name,
       roomId,
       secureId,
-      ListDiffNotifier(),
     );
   }
 
@@ -259,6 +232,39 @@ addCandidate(attendee, candidate).then((value) => candidates.removeItem(candidat
     return availableRooms
         .get()
         .then((value) => value.docs.map((e) => e.data()).toList());
+  }
+
+  @override
+  ListDiffNotifier<RtcIceCandidateModel> getUserCandidates(
+    Room room,
+    UserAccount user,
+    Attendee attendee,
+  ) {
+    final roomDoc = getRooms(user.id).doc(room.id);
+    final attendeeDoc = getAttendees(roomDoc, user.id).doc(attendee.id);
+    final candidatesCollection = getIceCandidates(attendeeDoc);
+    final _subBox = Box<StreamSubscription>();
+    final candidates =
+        ListDiffNotifier<RtcIceCandidateModel>((_) => _subBox.data.cancel());
+    _subBox.data = candidatesCollection.snapshots().listen((event) {
+      for (var candidate in event.docChanges) {
+        final changeType = candidate.type;
+        if (changeType == DocumentChangeType.added) {
+          candidates.addItem(candidate.doc.data()!);
+        } else if (changeType == DocumentChangeType.removed) {
+          candidates.removeItem(candidate.doc.data()!);
+        }
+      }
+    }, cancelOnError: true);
+    if (attendee.id == user.id) {
+      candidates.addDiffListener(onAdded: (candidate) {
+        if (candidate.id == null) {
+          addCandidate(attendee, candidate)
+              .then((value) => candidates.removeItem(candidate));
+        }
+      });
+    }
+    return candidates;
   }
 
   @override
