@@ -148,7 +148,7 @@ class RoomClient implements IRoomClient {
             connections[key] = connection;
           }
         }
-      }, cancelOnError: true);
+      });
       connections.addDiffListener(onChanged: (entry) async {
         if (entry.value.first != entry.value.second) {
           await getConnections(doc.reference)
@@ -259,12 +259,14 @@ class RoomClient implements IRoomClient {
           candidates.removeItem(candidate.doc.data()!);
         }
       }
-    }, cancelOnError: true);
+    });
     if (attendee.id == user.id) {
       candidates.addDiffListener(onAdded: (candidate) {
         if (candidate.id == null) {
-          addCandidate(attendee, candidate)
-              .then((value) => candidates.removeItem(candidate));
+          candidates.removeItem(candidate);
+          addCandidate(attendee, candidate).onError(
+            (error, _) => candidates.addItem(candidate),
+          );
         }
       });
     }
