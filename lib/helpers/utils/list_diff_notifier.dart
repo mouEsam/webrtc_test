@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:webrtc_test/blocs/models/connection.dart';
 
 class ListDiffNotifier<I> extends ChangeNotifier {
   final ValueChanged<List<I>>? _onDisposed;
@@ -97,6 +98,20 @@ class ListDiffNotifier<I> extends ChangeNotifier {
 
   void forEach(ValueChanged<I> action) => _items.forEach(action);
 
+  I? replaceFirstWhere(I item, bool Function(I item) predicate, [bool notifyRemove = true]) {
+    final index = _items.indexWhere(predicate);
+    if (index >= 0) {
+      final old = _items[index];
+      if (notifyRemove) {
+        notifyListeners(removedItem: old);
+      }
+      _items[index] = item;
+      notifyListeners(addedItem: item);
+      return old;
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     if (_disposed) return;
@@ -106,4 +121,5 @@ class ListDiffNotifier<I> extends ChangeNotifier {
     _removedListeners.clear();
     super.dispose();
   }
+
 }

@@ -9,6 +9,7 @@ import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 
 class PeerConnection extends ChangeNotifier {
   final RTCPeerConnection connection;
+  final String id;
   final Attendee remote; // other side
   final ListDiffNotifier<RtcIceCandidateModel> _localCandidates;
   final ListDiffNotifier<RtcIceCandidateModel> _remoteCandidates;
@@ -24,6 +25,7 @@ class PeerConnection extends ChangeNotifier {
   MediaStream? _localStream;
 
   PeerConnection._(
+    this.id,
     this.connection,
     this.remote,
     this._localCandidates,
@@ -44,12 +46,14 @@ class PeerConnection extends ChangeNotifier {
   }
 
   static Future<PeerConnection> createConnection(
+    String id,
     Attendee remote,
     ListDiffNotifier<RtcIceCandidateModel> localCandidates,
     ListDiffNotifier<RtcIceCandidateModel> remoteCandidates,
     RTCPeerConnection connection,
   ) async {
     final _connection = PeerConnection._(
+      id,
       connection,
       remote,
       localCandidates,

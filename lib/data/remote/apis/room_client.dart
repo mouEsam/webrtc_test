@@ -129,7 +129,7 @@ class RoomClient implements IRoomClient {
       }, cancelOnError: true);
       final _conSubBox = Box<StreamSubscription>();
       final connections =
-          MapDiffNotifier<String, Connection>((_) => _conSubBox.data.cancel());
+          ListDiffNotifier<Connection>((_) => _conSubBox.data.cancel());
       _conSubBox.data = getConnections(doc.reference)
           .where('parties', arrayContains: userId)
           .snapshots()
@@ -143,9 +143,14 @@ class RoomClient implements IRoomClient {
               .firstWhereOrNull((element) => element != userId);
           if (key == null) continue;
           if (changeType == DocumentChangeType.removed) {
-            connections.removeItem(key);
+            connections.removeItem(connection);
+          } else if (changeType == DocumentChangeType.added) {
+            connections.addItem(connection);
           } else {
-            connections[key] = connection;
+            final replaced = connections.replaceFirstWhere(connection, (conn) => conn.id == connection.id, false);
+            if (replaced == null) {
+              connections.addItem(connection);
+            }
           }
         }
       });
@@ -172,7 +177,7 @@ class RoomClient implements IRoomClient {
     UserAccount user,
   ) async {
     final room =
-        Room('', roomName, user.id, ListDiffNotifier(), MapDiffNotifier());
+        Room('', roomName, user.id, ListDiffNotifier(), ListDiffNotifier());
     final roomDoc = await getRooms(user.id).add(room);
     final attendee = createAttendee(user, roomDoc.id, _maxInt);
     final attendeeDoc = getAttendees(roomDoc, user.id).doc(attendee.id);
@@ -203,7 +208,7 @@ class RoomClient implements IRoomClient {
           .where((id) => user.id != id)
           .map((id) async {
         final connection = Connection.init([user.id, id], user.id, id, offer);
-        await getConnections(roomDoc).add(connection);
+        await getConnections(roomDoc).doc(connection.id).set(connection);
         return connection;
       }).toList();
     });

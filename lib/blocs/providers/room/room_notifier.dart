@@ -7,6 +7,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
+import 'package:webrtc_test/blocs/models/connection.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
@@ -110,6 +111,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
         connection!.addTrack(track);
       });
       final offer = await connection!.createOffer();
+      connection!.setLocalDescription(offer);
       final data = await _roomClient.joinRoom(
         availableRoom,
         userAccount,
@@ -126,7 +128,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
         room,
         user,
         _candidates!,
-        offer,
         connection,
       );
       return ConnectedRoomState(
@@ -141,36 +142,39 @@ class RoomNotifier extends StateNotifier<RoomState> {
     Room room,
     Attendee user,
     ListDiffNotifier<RtcIceCandidateModel> userCandidates, [
-    RTCSessionDescription? offer,
     RTCPeerConnection? connection,
   ]) {
     final connectionBox = Box(connection);
-    room.connections.addDiffListener(onAdded: (entry) async {
+    room.connections.addDiffListener(onAdded: (conData) async {
       final attendee = room.attendees.items.firstWhereOrNull((element) {
-        return entry.key == element.id;
+        return element.id != user.id && conData.parties.contains(element.id);
       });
-      log("added connection ${entry.key} found attendee ${attendee != null}");
+      log("added connection ${conData.id} found attendee ${attendee != null}");
       if (attendee == null) return;
       final existingConnection = connections.items.firstWhereOrNull((element) {
-        return element.remote.id == entry.key;
+        return conData.id == element.id;
       });
-      final bool localAlreadySet = existingConnection != null;
+      late final bool localAlreadySet;
       late final PeerConnection peerConnection;
       late final RTCPeerConnection connection;
       if (existingConnection != null) {
         peerConnection = existingConnection;
         connection = peerConnection.connection;
+        localAlreadySet = true;
       } else {
         if (connectionBox.hasData) {
+          localAlreadySet = true;
           connection = connectionBox.data;
           connectionBox.data = null;
         } else {
+          localAlreadySet = false;
           connection = await createPeerConnection(configuration);
           _localStream?.getTracks().forEach((track) {
             connection.addTrack(track);
           });
         }
         peerConnection = await PeerConnection.createConnection(
+          conData.id!,
           attendee,
           userCandidates,
           _roomClient.getUserCandidates(
@@ -182,33 +186,20 @@ class RoomNotifier extends StateNotifier<RoomState> {
         );
         connections.addItem(peerConnection);
       }
-      final connectionData = entry.value;
-      if (connectionData.offerId == user.id) {
+      if (conData.offerId == user.id) {
         if (!localAlreadySet) {
-          await connection.setLocalDescription(offer ?? connectionData.offer);
+          await connection.setLocalDescription(conData.offer);
         }
-        if (connectionData.answer != null) {
-          await connection.setRemoteDescription(connectionData.answer!);
+        if (conData.answer != null) {
+          await connection.setRemoteDescription(conData.answer!);
         }
-      } else if (connectionData.answerId == user.id) {
-        await connection.setRemoteDescription(connectionData.offer);
+      } else if (conData.answerId == user.id) {
+        await connection.setRemoteDescription(conData.offer);
         if (!localAlreadySet) {
           final answer = await connection.createAnswer();
           await connection.setLocalDescription(answer);
-          final newConnection = connectionData.setAnswer(answer);
+          final newConnection = conData.setAnswer(answer);
           _roomClient.addConnection(room, userAccount, newConnection);
-        }
-      }
-    }, onChanged: (entry) async {
-      final connection = connections.items.firstWhereOrNull((element) {
-        return entry.key == element.remote.id;
-      });
-      log("changed connection ${entry.key} found connection ${connection != null}");
-      if (connection != null && entry.value.first != entry.value.second) {
-        final connectionData = entry.value.second;
-        if (connectionData.offerId == user.id) {
-          final answer = connectionData.answer!;
-          await connection.setAnswer(answer);
         }
       }
     });

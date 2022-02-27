@@ -10,7 +10,7 @@ class Room extends Equatable {
   final String name;
   final String hostId;
   final ListDiffNotifier<Attendee> attendees;
-  final MapDiffNotifier<String, Connection> connections;
+  final ListDiffNotifier<Connection> connections;
 
   const Room(this.id, this.name, this.hostId, this.attendees, this.connections);
 
