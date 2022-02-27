@@ -111,12 +111,12 @@ class PeerConnection extends ChangeNotifier {
       remoteStreams[stream.id] ??= stream;
       remoteStreams[stream.id]?.removeTrack(track);
     };
-    connection.onAddStream = (stream) {
-      log("Add remote stream");
-      remoteStreams[stream.id] = stream;
-    };
+    // connection.onAddStream = (stream) {
+    //   log("Add remote stream");
+    //   remoteStreams[stream.id] = stream;
+    // };
     connection.onRemoveStream = (stream) {
-      log("Add remote stream");
+      log("Remove remote stream");
       remoteStreams.removeItem(stream.id);
     };
   }
