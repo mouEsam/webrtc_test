@@ -19,6 +19,8 @@ class MapDiffNotifier<K, V> extends ChangeNotifier {
 
   Map<K, V> get items => Map.unmodifiable(_items);
 
+  Iterable<V> get values => _items.values;
+
   V? operator [](K key) {
     return _items[key];
   }
@@ -115,13 +117,13 @@ class MapDiffNotifier<K, V> extends ChangeNotifier {
     );
   }
 
-  void removeItem(K key) {
-    if (_disposed) return;
-    final value = _items[key];
-    _items.remove(key);
+  V? removeItem(K key) {
+    if (_disposed) return null;
+    final value = _items.remove(key);
     if (value != null) {
       notifyListeners(removedItem: MapEntry(key, value));
     }
+    return value;
   }
 
   void forEach(ValueChanged<MapEntry<K, V>> action) =>

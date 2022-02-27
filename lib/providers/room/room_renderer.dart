@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
+import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 import 'package:webrtc_test/providers/room/room_notifier.dart';
 import 'package:webrtc_test/providers/room/room_states.dart';
 
@@ -25,7 +26,13 @@ final roomRendererProvider = StateProvider.autoDispose((ref) {
 
 class RoomRenderer {
   final RoomNotifier _roomNotifier;
-  final Map<String, RTCVideoRenderer> remoteRenderers = {};
+  final MapDiffNotifier<String, RTCVideoRenderer> remoteRenderers =
+      MapDiffNotifier((renderers) {
+    for (var renderer in renderers.values) {
+      renderer.srcObject = null;
+      renderer.dispose();
+    }
+  });
   final RTCVideoRenderer localRenderer = RTCVideoRenderer();
 
   RoomRenderer(
@@ -38,10 +45,7 @@ class RoomRenderer {
 
   void dispose() {
     localRenderer.dispose();
-    for (var renderer in remoteRenderers.values) {
-      renderer.srcObject = null;
-      renderer.dispose();
-    }
+    remoteRenderers.dispose();
     _roomNotifier.connections.forEach((value) {
       value.localStream = null;
     });
@@ -69,7 +73,7 @@ class RoomRenderer {
   }
 
   void _onConnectionRemoved(connection) {
-    final renderer = remoteRenderers.remove(connection.remote.id);
+    final renderer = remoteRenderers.removeItem(connection.remote.id);
     renderer?.dispose();
     connection.localStream = null;
   }
