@@ -31,6 +31,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   final UserNotifier _userAccount;
   final IRoomClient _roomClient;
   late UserAccount userAccount;
+  MediaStream? _localStream;
   ListDiffNotifier<RtcIceCandidateModel>? _candidates;
   final ListDiffNotifier<PeerConnection> connections =
       ListDiffNotifier((connections) {
@@ -50,6 +51,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
     ]
   };
 
+  MediaStream? get localStream => _localStream;
+
   RoomNotifier(
     this._roomClient,
     this._userAccount,
@@ -66,10 +69,17 @@ class RoomNotifier extends StateNotifier<RoomState> {
     super.dispose();
     connections.dispose();
     _candidates?.dispose();
+    _localStream?.dispose();
+  }
+
+  Future<void> openUserMedia() async {
+    _localStream = await navigator.mediaDevices
+        .getUserMedia({'video': true, 'audio': false});
   }
 
   Future<void> createRoom(String roomName, String name) async {
     return safeAttempt(() async {
+      openUserMedia();
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
@@ -94,7 +104,11 @@ class RoomNotifier extends StateNotifier<RoomState> {
   Future<void> joinRoom(AvailableRoom availableRoom, String name) async {
     RTCPeerConnection? connection;
     return safeAttempt(() async {
+      openUserMedia();
       connection = await createPeerConnection(configuration);
+      _localStream?.getTracks().forEach((track) {
+        connection!.addTrack(track);
+      });
       final offer = await connection!.createOffer();
       final data = await _roomClient.joinRoom(
         availableRoom,
@@ -131,11 +145,11 @@ class RoomNotifier extends StateNotifier<RoomState> {
     RTCPeerConnection? connection,
   ]) {
     final connectionBox = Box(connection);
-    log("_setupRoomListeners");
     room.connections.addDiffListener(onAdded: (entry) async {
       final attendee = room.attendees.items.firstWhereOrNull((element) {
         return entry.key == element.id;
       });
+      log("added connection ${entry.key} found attendee ${attendee != null}");
       if (attendee == null) return;
       final existingConnection = connections.items.firstWhereOrNull((element) {
         return element.remote.id == entry.key;
@@ -152,9 +166,11 @@ class RoomNotifier extends StateNotifier<RoomState> {
           connectionBox.data = null;
         } else {
           connection = await createPeerConnection(configuration);
+          _localStream?.getTracks().forEach((track) {
+            connection.addTrack(track);
+          });
         }
         peerConnection = await PeerConnection.createConnection(
-          user,
           attendee,
           userCandidates,
           _roomClient.getUserCandidates(
@@ -194,8 +210,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final connection = connections.items.firstWhereOrNull((element) {
         return entry.key == element.remote.id;
       });
-      if (connection != null &&
-          entry.value.first.answer != entry.value.second.answer) {
+      log("changed connection ${entry.key} found connection ${connection != null}");
+      if (connection != null && entry.value.first != entry.value.second) {
         final connectionData = entry.value.second;
         if (connectionData.offerId == user.id) {
           final answer = connectionData.answer!;
@@ -223,6 +239,9 @@ class RoomNotifier extends StateNotifier<RoomState> {
         if (state.room.attendees.isEmpty) {
           await _roomClient.closeRoom(state.room);
         }
+        connections.clear();
+        _candidates?.dispose();
+        _localStream?.dispose();
         return const NoRoomState();
       });
     }

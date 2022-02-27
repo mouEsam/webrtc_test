@@ -86,6 +86,15 @@ class ListDiffNotifier<I> extends ChangeNotifier {
     }
   }
 
+  void clear([bool notify = true]) {
+    if (notify) {
+      for (var item in _items) {
+        notifyListeners(removedItem: item);
+      }
+    }
+    _items.clear();
+  }
+
   void forEach(ValueChanged<I> action) => _items.forEach(action);
 
   @override

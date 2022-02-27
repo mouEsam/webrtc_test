@@ -27,8 +27,6 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(roomRendererProvider);
-    state.openUserMedia();
     connect();
   }
 
@@ -64,21 +62,9 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
       return Column(
         children: [
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                child: const Text("Open camera & microphone"),
-                onPressed: renderer.openUserMedia,
-              ),
-              const SizedBox(
-                width: 8,
-              ),
-              ElevatedButton(
-                child: const Text("Hangup"),
-                onPressed: roomController.exitRoom,
-              )
-            ],
+          ElevatedButton(
+            child: const Text("Hangup"),
+            onPressed: roomController.exitRoom,
           ),
           const SizedBox(height: 8),
           Expanded(

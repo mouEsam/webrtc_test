@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
-import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 import 'package:webrtc_test/blocs/providers/room/room_notifier.dart';
 import 'package:webrtc_test/blocs/providers/room/room_states.dart';
+import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
+import 'package:webrtc_test/services/providers/connection/peer_connection.dart';
 
 final roomRendererProvider = StateProvider.autoDispose((ref) {
   final renderer = RoomRenderer(
@@ -56,6 +55,7 @@ class RoomRenderer {
       onAdded: _onConnectionAdded,
       onRemoved: _onConnectionRemoved,
     );
+    localRenderer.srcObject = _roomNotifier.localStream;
   }
 
   void clear() {
@@ -72,14 +72,13 @@ class RoomRenderer {
     });
   }
 
-  void _onConnectionRemoved(connection) {
+  void _onConnectionRemoved(PeerConnection connection) {
     final renderer = remoteRenderers.removeItem(connection.remote.id);
     renderer?.dispose();
     connection.localStream = null;
   }
 
-  void _onConnectionAdded(connection) async {
-    connection.localStream = localRenderer.srcObject;
+  void _onConnectionAdded(PeerConnection connection) async {
     final renderer = RTCVideoRenderer();
     await renderer.initialize();
     connection.remoteStreams.addListener(() {
@@ -91,14 +90,5 @@ class RoomRenderer {
       }
     });
     remoteRenderers[connection.remote.id] = renderer;
-  }
-
-  Future<void> openUserMedia() async {
-    var stream = await navigator.mediaDevices
-        .getUserMedia({'video': true, 'audio': false});
-    _roomNotifier.connections.forEach((value) {
-      value.localStream = stream;
-    });
-    localRenderer.srcObject = stream;
   }
 }

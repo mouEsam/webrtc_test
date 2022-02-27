@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
@@ -116,7 +117,7 @@ class RoomClient implements IRoomClient {
           ListDiffNotifier<Attendee>((_) => _subBox.data.cancel());
       _subBox.data =
           getAttendees(doc.reference, userId).snapshots().listen((event) {
-        log("Some changes here ${event.size}");
+        log("Some attendees changes here ${event.size}");
         for (var attendee in event.docChanges) {
           final changeType = attendee.type;
           if (changeType == DocumentChangeType.added) {
@@ -133,15 +134,14 @@ class RoomClient implements IRoomClient {
           .where('parties', arrayContains: userId)
           .snapshots()
           .listen((event) {
-        log("Some changes here ${event.size}");
+        log("Some connections changes here ${event.size}");
         for (var connectionDoc in event.docChanges) {
           final changeType = connectionDoc.type;
           final connection = connectionDoc.doc.data();
           if (connection == null) continue;
-          final list = connection.parties.toList();
-          list.remove(userId);
-          if (list.isEmpty) continue;
-          final key = list.first;
+          final key = connection.parties
+              .firstWhereOrNull((element) => element != userId);
+          if (key == null) continue;
           if (changeType == DocumentChangeType.removed) {
             connections.removeItem(key);
           } else {
