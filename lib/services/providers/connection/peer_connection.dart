@@ -62,8 +62,8 @@ class PeerConnection extends ChangeNotifier {
     return _connection;
   }
 
-  Future<RTCSessionDescription> setOffer([RTCSessionDescription? offer]) async {
-    final remote = offer != null;
+  Future<RTCSessionDescription> setOffer(
+      {RTCSessionDescription? offer, bool remote = false}) async {
     offer ??= await connection.createOffer();
     if (remote) {
       connection.setRemoteDescription(offer);
@@ -74,13 +74,12 @@ class PeerConnection extends ChangeNotifier {
   }
 
   Future<RTCSessionDescription> setAnswer(
-      [RTCSessionDescription? answer]) async {
-    final local = answer == null;
+      {RTCSessionDescription? answer, bool remote = false}) async {
     answer ??= await connection.createAnswer();
-    if (local) {
-      connection.setLocalDescription(answer);
-    } else {
+    if (remote) {
       connection.setRemoteDescription(answer);
+    } else {
+      connection.setLocalDescription(answer);
     }
     return answer;
   }
@@ -88,6 +87,9 @@ class PeerConnection extends ChangeNotifier {
   @override
   void dispose() {
     super.dispose();
+    if (_localStream != null) {
+      _unregisterStreamCallbacks(_localStream!);
+    }
     _remoteCandidates.dispose();
     remoteStreams.dispose();
     connection.close();
@@ -126,8 +128,6 @@ class PeerConnection extends ChangeNotifier {
   }
 
   void _unregisterStreamCallbacks(MediaStream localStream) {
-    localStream.getTracks().forEach((track) {
-      connection.removeTrack(track, localStream);
-    });
+    connection.removeStream(localStream);
   }
 }

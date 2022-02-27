@@ -129,6 +129,16 @@ class MapDiffNotifier<K, V> extends ChangeNotifier {
   void forEach(ValueChanged<MapEntry<K, V>> action) =>
       _items.entries.forEach(action);
 
+
+  void clear([bool notify = true]) {
+    if (notify) {
+      for (var item in _items.entries) {
+        notifyListeners(removedItem: item);
+      }
+    }
+    _items.clear();
+  }
+
   @override
   void dispose() {
     if (_disposed) return;
@@ -139,4 +149,5 @@ class MapDiffNotifier<K, V> extends ChangeNotifier {
     _changedListeners.clear();
     super.dispose();
   }
+
 }

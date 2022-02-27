@@ -43,11 +43,12 @@ class RoomRenderer {
   }
 
   void dispose() {
+    _roomNotifier.connections.removeDiffListener(
+      onAdded: _onConnectionAdded,
+      onRemoved: _onConnectionRemoved,
+    );
     localRenderer.dispose();
     remoteRenderers.dispose();
-    _roomNotifier.connections.forEach((value) {
-      value.localStream = null;
-    });
   }
 
   void setupRoom() {
@@ -66,16 +67,17 @@ class RoomRenderer {
     localRenderer.srcObject = null;
     for (var renderer in remoteRenderers.values) {
       renderer.srcObject = null;
+      renderer.dispose();
     }
-    _roomNotifier.connections.forEach((value) {
-      value.localStream = null;
-    });
+    remoteRenderers.clear();
   }
 
   void _onConnectionRemoved(PeerConnection connection) {
     final renderer = remoteRenderers.removeItem(connection.remote.id);
+    if (renderer?.srcObject != null) {
+      renderer?.srcObject = null;
+    }
     renderer?.dispose();
-    connection.localStream = null;
   }
 
   void _onConnectionAdded(PeerConnection connection) async {
@@ -85,7 +87,7 @@ class RoomRenderer {
       final streams = connection.remoteStreams.items.values.toList();
       if (streams.isNotEmpty) {
         renderer.srcObject = streams.first;
-      } else {
+      } else if (renderer.srcObject != null) {
         renderer.srcObject = null;
       }
     });

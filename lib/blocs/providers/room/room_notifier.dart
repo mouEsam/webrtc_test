@@ -106,10 +106,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
     RTCPeerConnection? connection;
     return safeAttempt(() async {
       openUserMedia();
-      connection = await createPeerConnection(configuration);
-      _localStream?.getTracks().forEach((track) {
-        connection!.addTrack(track, _localStream!);
-      });
+      connection = await _createNativeConnection(configuration);
       final offer = await connection!.createOffer();
       connection!.setLocalDescription(offer);
       final data = await _roomClient.joinRoom(
@@ -168,10 +165,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
           connectionBox.data = null;
         } else {
           localAlreadySet = false;
-          connection = await createPeerConnection(configuration);
-          _localStream?.getTracks().forEach((track) {
-            connection.addTrack(track, _localStream!);
-          });
+          connection = await _createNativeConnection(configuration);
         }
         peerConnection = await PeerConnection.createConnection(
           conData.id!,
@@ -188,16 +182,15 @@ class RoomNotifier extends StateNotifier<RoomState> {
       }
       if (conData.offerId == user.id) {
         if (!localAlreadySet) {
-          await connection.setLocalDescription(conData.offer);
+          await peerConnection.setOffer(offer: conData.offer, remote: false);
         }
         if (conData.answer != null) {
-          await connection.setRemoteDescription(conData.answer!);
+          await peerConnection.setAnswer(answer: conData.answer, remote: true);
         }
       } else if (conData.answerId == user.id) {
-        await connection.setRemoteDescription(conData.offer);
+        await peerConnection.setOffer(offer: conData.offer, remote: true);
         if (!localAlreadySet) {
-          final answer = await connection.createAnswer();
-          await connection.setLocalDescription(answer);
+          final answer = await peerConnection.setAnswer(remote: false);
           final newConnection = conData.setAnswer(answer);
           _roomClient.addConnection(room, userAccount, newConnection);
         }
@@ -207,10 +200,21 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final connection = connections.items
           .firstWhereOrNull((element) => element.remote.id == attendee.id);
       if (connection != null) {
+        connection.localStream = null;
         connections.removeItem(connection);
         connection.dispose();
       }
     });
+  }
+
+  Future<RTCPeerConnection> _createNativeConnection(
+      [Map<String, dynamic>? configuration]) async {
+    configuration ??= this.configuration;
+    final connection = await createPeerConnection(configuration);
+    _localStream?.getTracks().forEach((track) {
+      connection.addTrack(track, _localStream!);
+    });
+    return connection;
   }
 
   Future<void> exitRoom() async {

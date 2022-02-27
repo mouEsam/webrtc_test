@@ -15,7 +15,6 @@ import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/data/remote/interfaces/room_client.dart';
 import 'package:webrtc_test/helpers/utils/box.dart';
 import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
-import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 import 'package:webrtc_test/helpers/utils/tuple.dart';
 
 import 'firebase.dart';
@@ -147,7 +146,8 @@ class RoomClient implements IRoomClient {
           } else if (changeType == DocumentChangeType.added) {
             connections.addItem(connection);
           } else {
-            final replaced = connections.replaceFirstWhere(connection, (conn) => conn.id == connection.id, false);
+            final replaced = connections.replaceFirstWhere(
+                connection, (conn) => conn.id == connection.id, false);
             if (replaced == null) {
               connections.addItem(connection);
             }
