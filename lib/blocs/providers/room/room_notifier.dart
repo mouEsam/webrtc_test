@@ -74,13 +74,17 @@ class RoomNotifier extends StateNotifier<RoomState> {
   }
 
   Future<void> openUserMedia() async {
-    _localStream = await navigator.mediaDevices
-        .getUserMedia({'video': true, 'audio': false});
+    try {
+      _localStream = await navigator.mediaDevices
+          .getUserMedia({'video': true, 'audio': false});
+    } catch (e) {
+      _localStream = await createLocalMediaStream(userAccount.id);
+    }
   }
 
   Future<void> createRoom(String roomName, String name) async {
     return safeAttempt(() async {
-      openUserMedia();
+      await openUserMedia();
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
@@ -105,7 +109,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   Future<void> joinRoom(AvailableRoom availableRoom, String name) async {
     RTCPeerConnection? connection;
     return safeAttempt(() async {
-      openUserMedia();
+      await openUserMedia();
       connection = await _createNativeConnection(configuration);
       final offer = await connection!.createOffer();
       connection!.setLocalDescription(offer);
@@ -151,20 +155,16 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final existingConnection = connections.items.firstWhereOrNull((element) {
         return conData.id == element.id;
       });
-      late final bool localAlreadySet;
       late final PeerConnection peerConnection;
       late final RTCPeerConnection connection;
       if (existingConnection != null) {
         peerConnection = existingConnection;
         connection = peerConnection.connection;
-        localAlreadySet = true;
       } else {
         if (connectionBox.hasData) {
-          localAlreadySet = true;
           connection = connectionBox.data;
           connectionBox.data = null;
         } else {
-          localAlreadySet = false;
           connection = await _createNativeConnection(configuration);
         }
         peerConnection = await PeerConnection.createConnection(
@@ -181,15 +181,15 @@ class RoomNotifier extends StateNotifier<RoomState> {
         connections.addItem(peerConnection);
       }
       if (conData.offerId == user.id) {
-        if (!localAlreadySet) {
+        if (!peerConnection.localSat) {
           await peerConnection.setOffer(offer: conData.offer, remote: false);
         }
-        if (conData.answer != null) {
+        if (!peerConnection.remoteSat && conData.answer != null) {
           await peerConnection.setAnswer(answer: conData.answer, remote: true);
         }
-      } else if (conData.answerId == user.id) {
+      } else if (!peerConnection.remoteSat && conData.answerId == user.id) {
         await peerConnection.setOffer(offer: conData.offer, remote: true);
-        if (!localAlreadySet) {
+        if (!peerConnection.localSat) {
           final answer = await peerConnection.setAnswer(remote: false);
           final newConnection = conData.setAnswer(answer);
           _roomClient.addConnection(room, userAccount, newConnection);
@@ -212,6 +212,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
     configuration ??= this.configuration;
     final connection = await createPeerConnection(configuration);
     _localStream?.getTracks().forEach((track) {
+      log("Adding track to connection");
       connection.addTrack(track, _localStream!);
     });
     return connection;
@@ -227,9 +228,12 @@ class RoomNotifier extends StateNotifier<RoomState> {
         if (state.room.attendees.isEmpty) {
           await _roomClient.closeRoom(state.room);
         }
+        connections.forEach((value) => value.dispose());
         connections.clear();
         _candidates?.dispose();
+        _candidates = null;
         _localStream?.dispose();
+        _localStream = null;
         return const NoRoomState();
       });
     }

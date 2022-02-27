@@ -23,6 +23,10 @@ class PeerConnection extends ChangeNotifier {
     }
   });
   MediaStream? _localStream;
+  bool _localSat = false;
+  bool get localSat => _localSat;
+  bool _remoteSat = false;
+  bool get remoteSat => _remoteSat;
 
   PeerConnection._(
     this.id,
@@ -38,7 +42,8 @@ class PeerConnection extends ChangeNotifier {
     if (localStream?.id != _localStream?.id) {
       if (localStream != null) {
         _registerStreamCallbacks(localStream);
-      } else if (_localStream != null) {
+      }
+      if (_localStream != null) {
         _unregisterStreamCallbacks(_localStream!);
       }
     }
@@ -66,9 +71,13 @@ class PeerConnection extends ChangeNotifier {
       {RTCSessionDescription? offer, bool remote = false}) async {
     offer ??= await connection.createOffer();
     if (remote) {
+      _remoteSat = true;
       connection.setRemoteDescription(offer);
+
     } else {
+      _localSat = true;
       connection.setLocalDescription(offer);
+
     }
     return offer;
   }
@@ -77,8 +86,10 @@ class PeerConnection extends ChangeNotifier {
       {RTCSessionDescription? answer, bool remote = false}) async {
     answer ??= await connection.createAnswer();
     if (remote) {
+      _remoteSat = true;
       connection.setRemoteDescription(answer);
     } else {
+      _localSat = true;
       connection.setLocalDescription(answer);
     }
     return answer;
@@ -103,18 +114,26 @@ class PeerConnection extends ChangeNotifier {
       log('Got candidate: ${candidate.toMap()}');
       _localCandidates.addItem(RtcIceCandidateModel.fromCandidate(candidate));
     };
+    // connection.onTrack = (event) {
+    //   remoteStreams.clear(event.streams.isEmpty);
+    //   for (var stream in event.streams) {
+    //     remoteStreams[stream.id] = stream;
+    //   }
+    // };
     connection.onAddTrack = (stream, track) {
+      log("Add remote stream track");
       remoteStreams[stream.id] ??= stream;
       remoteStreams[stream.id]?.addTrack(track);
     };
     connection.onRemoveTrack = (stream, track) {
+      log("Remove remote stream track");
       remoteStreams[stream.id] ??= stream;
       remoteStreams[stream.id]?.removeTrack(track);
     };
-    // connection.onAddStream = (stream) {
-    //   log("Add remote stream");
-    //   remoteStreams[stream.id] = stream;
-    // };
+    connection.onAddStream = (stream) {
+      log("Add remote stream");
+      remoteStreams[stream.id] = stream;
+    };
     connection.onRemoveStream = (stream) {
       log("Remove remote stream");
       remoteStreams.removeItem(stream.id);

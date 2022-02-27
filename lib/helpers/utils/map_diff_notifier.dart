@@ -73,6 +73,7 @@ class MapDiffNotifier<K, V> extends ChangeNotifier {
   void addListener(VoidCallback listener) {
     if (_disposed) return;
     super.addListener(listener);
+    if (_items.isNotEmpty) notifyListeners();
   }
 
   @override

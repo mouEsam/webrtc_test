@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/providers/room/room_notifier.dart';
@@ -84,12 +86,14 @@ class RoomRenderer {
     final renderer = RTCVideoRenderer();
     await renderer.initialize();
     connection.remoteStreams.addListener(() {
+      log("different streams event");
       final streams = connection.remoteStreams.items.values.toList();
       if (streams.isNotEmpty) {
         renderer.srcObject = streams.first;
       } else if (renderer.srcObject != null) {
         renderer.srcObject = null;
       }
+      remoteRenderers[connection.remote.id] = renderer;
     });
     remoteRenderers[connection.remote.id] = renderer;
   }
