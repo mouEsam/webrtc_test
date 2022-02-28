@@ -20,6 +20,8 @@ class EstablishedPeerConnection {
     }
   });
   MediaStream? _localStream;
+  bool _localSat = false;
+  bool _remoteSat = false;
 
   EstablishedPeerConnection._(this.connection, this._localCandidates) {
     _registerCallbacks();
@@ -90,16 +92,26 @@ class EstablishedPeerConnection {
     connection.removeStream(localStream);
   }
 
-  Future<RTCSessionDescription> createOffer() {
-    return connection.createOffer();
+  Future<RTCSessionDescription> createOffer() async {
+    final offer = await connection.createOffer();
+    _setLocalDescription(offer);
+    return offer;
   }
 
-  Future<RTCSessionDescription> createAnswer() {
-    return connection.createAnswer();
+  Future<RTCSessionDescription> createAnswer() async {
+    final offer = await connection.createAnswer();
+    _setLocalDescription(offer);
+    return offer;
   }
 
-  Future<void> setLocalDescription(RTCSessionDescription offer) {
+  Future<void> _setLocalDescription(RTCSessionDescription offer) {
+    _localSat = true;
     return connection.setLocalDescription(offer);
+  }
+
+  Future<void> _setRemoteDescription(RTCSessionDescription offer) {
+    _remoteSat = true;
+    return connection.setRemoteDescription(offer);
   }
 }
 
@@ -109,10 +121,8 @@ class PeerConnection extends ChangeNotifier {
   final Attendee remote;
   final ListDiffNotifier<RtcIceCandidateModel> _remoteCandidates;
 
-  bool _localSat = false;
-  bool get localSat => _localSat;
-  bool _remoteSat = false;
-  bool get remoteSat => _remoteSat;
+  bool get localSat => _connection._localSat;
+  bool get remoteSat => _connection._remoteSat;
   RTCPeerConnection get connection => _connection.connection;
   MapDiffNotifier<String, MediaStream> get remoteStreams =>
       _connection.remoteStreams;
@@ -147,26 +157,18 @@ class PeerConnection extends ChangeNotifier {
 
   Future<RTCSessionDescription> setOffer(
       {RTCSessionDescription? offer, bool remote = false}) async {
-    offer ??= await connection.createOffer();
+    offer ??= await _connection.createOffer();
     if (remote) {
-      _remoteSat = true;
-      connection.setRemoteDescription(offer);
-    } else {
-      _localSat = true;
-      connection.setLocalDescription(offer);
+      await _connection._setRemoteDescription(offer);
     }
     return offer;
   }
 
   Future<RTCSessionDescription> setAnswer(
       {RTCSessionDescription? answer, bool remote = false}) async {
-    answer ??= await connection.createAnswer();
+    answer ??= await _connection.createAnswer();
     if (remote) {
-      _remoteSat = true;
-      connection.setRemoteDescription(answer);
-    } else {
-      _localSat = true;
-      connection.setLocalDescription(answer);
+      await _connection._setRemoteDescription(answer);
     }
     return answer;
   }

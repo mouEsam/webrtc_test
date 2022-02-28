@@ -34,14 +34,15 @@ class RoomRenderer {
       renderer.dispose();
     }
   });
-  final RTCVideoRenderer localRenderer = RTCVideoRenderer();
+  RTCVideoRenderer? localRenderer;
 
   RoomRenderer(
     this._roomNotifier,
   );
 
   void init() {
-    localRenderer.initialize();
+    localRenderer = RTCVideoRenderer();
+    localRenderer?.initialize();
   }
 
   void dispose() {
@@ -49,7 +50,9 @@ class RoomRenderer {
       onAdded: _onConnectionAdded,
       onRemoved: _onConnectionRemoved,
     );
-    localRenderer.dispose();
+    _roomNotifier.localStream.removeListener(_localStreamListener);
+    localRenderer?.dispose();
+    localRenderer = null;
     remoteRenderers.dispose();
   }
 
@@ -58,7 +61,11 @@ class RoomRenderer {
       onAdded: _onConnectionAdded,
       onRemoved: _onConnectionRemoved,
     );
-    localRenderer.srcObject = _roomNotifier.localStream;
+    _roomNotifier.localStream.addListener(_localStreamListener);
+  }
+
+  void _localStreamListener() {
+    localRenderer?.srcObject = _roomNotifier.localStream.value;
   }
 
   void clear() {
@@ -66,7 +73,9 @@ class RoomRenderer {
       onAdded: _onConnectionAdded,
       onRemoved: _onConnectionRemoved,
     );
-    localRenderer.srcObject = null;
+    if (localRenderer != null && localRenderer?.srcObject != null) {
+      localRenderer?.srcObject = null;
+    }
     for (var renderer in remoteRenderers.values) {
       renderer.srcObject = null;
       renderer.dispose();

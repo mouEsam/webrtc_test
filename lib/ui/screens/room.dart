@@ -76,6 +76,7 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
                     return Wrap(
                       children: [renderer.localRenderer]
                           .followedBy(renderer.remoteRenderers.values)
+                          .whereType<RTCVideoRenderer>()
                           .map((renderer) {
                         return Container(
                           height: 200,

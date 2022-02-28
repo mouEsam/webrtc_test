@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
@@ -31,7 +32,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   final UserNotifier _userAccount;
   final IRoomClient _roomClient;
   late UserAccount userAccount;
-  MediaStream? _localStream;
+  final ValueNotifier<MediaStream?> _localStream = ValueNotifier(null);
   ListDiffNotifier<RtcIceCandidateModel>? _candidates;
   final ListDiffNotifier<PeerConnection> connections =
       ListDiffNotifier((connections) {
@@ -51,7 +52,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
     ]
   };
 
-  MediaStream? get localStream => _localStream;
+  ValueListenable<MediaStream?> get localStream => _localStream;
 
   RoomNotifier(
     this._roomClient,
@@ -69,7 +70,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
     super.dispose();
     connections.dispose();
     _candidates?.dispose();
-    _localStream?.dispose();
+    _localStream.value?.dispose();
+    _localStream.dispose();
   }
 
   Future<MediaStream> openUserMedia() async {
@@ -104,7 +106,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
     return safeAttempt(() async {
       connection = await _createNativeConnection(configuration);
       final offer = await connection!.createOffer();
-      connection!.setLocalDescription(offer);
       final data = await _roomClient.joinRoom(
         availableRoom,
         userAccount,
@@ -200,13 +201,13 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   Future<EstablishedPeerConnection> _createNativeConnection(
       [Map<String, dynamic>? configuration]) async {
-    _localStream ??= await openUserMedia();
+    _localStream.value ??= await openUserMedia();
     configuration ??= this.configuration;
     _candidates ??= ListDiffNotifier();
     final establishedConnection = await EstablishedPeerConnection.establish(
       configuration,
       _candidates!,
-      _localStream,
+      _localStream.value,
     );
     return establishedConnection;
   }
@@ -225,8 +226,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
         connections.clear();
         _candidates?.dispose();
         _candidates = null;
-        _localStream?.dispose();
-        _localStream = null;
+        _localStream.value?.dispose();
+        _localStream.value = null;
         return const NoRoomState();
       });
     }
