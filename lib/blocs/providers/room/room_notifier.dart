@@ -179,8 +179,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
         if (!peerConnection.remoteSat && conData.answer != null) {
           await peerConnection.setAnswer(answer: conData.answer, remote: true);
         }
-      } else if (!peerConnection.remoteSat && conData.answerId == user.id) {
-        await peerConnection.setOffer(offer: conData.offer, remote: true);
+      } else if (conData.answerId == user.id) {
+        if (!peerConnection.remoteSat) {
+          await peerConnection.setOffer(offer: conData.offer, remote: true);
+        }
         if (!peerConnection.localSat) {
           final answer = await peerConnection.setAnswer(remote: false);
           final newConnection = conData.setAnswer(answer);

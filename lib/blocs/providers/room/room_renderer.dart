@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -35,14 +36,17 @@ class RoomRenderer {
     }
   });
   RTCVideoRenderer? localRenderer;
+  final Completer<bool> _rendererCompleter = Completer();
 
   RoomRenderer(
     this._roomNotifier,
   );
 
   void init() {
-    localRenderer = RTCVideoRenderer();
-    localRenderer?.initialize();
+    localRenderer = RTCVideoRenderer()
+      ..initialize().then((value) {
+        _rendererCompleter.complete(true);
+      });
   }
 
   void dispose() {
@@ -54,6 +58,9 @@ class RoomRenderer {
     localRenderer?.dispose();
     localRenderer = null;
     remoteRenderers.dispose();
+    if (!_rendererCompleter.isCompleted) {
+      _rendererCompleter.complete(false);
+    }
   }
 
   void setupRoom() {
@@ -64,8 +71,10 @@ class RoomRenderer {
     _roomNotifier.localStream.addListener(_localStreamListener);
   }
 
-  void _localStreamListener() {
-    localRenderer?.srcObject = _roomNotifier.localStream.value;
+  Future<void> _localStreamListener() async {
+    if (await _rendererCompleter.future) {
+      localRenderer?.srcObject = _roomNotifier.localStream.value;
+    }
   }
 
   void clear() {
