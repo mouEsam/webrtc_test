@@ -12,6 +12,15 @@ class EstablishedPeerConnection {
   final RTCPeerConnection connection;
   final ListDiffNotifier<RtcIceCandidateModel> localCandidates;
   MediaStream? _localStream;
+  final MapDiffNotifier<String, MediaStream> remoteStreams =
+      MapDiffNotifier((streams) {
+    for (final stream in streams.values) {
+      stream.getTracks().forEach((track) {
+        track.stop();
+      });
+      stream.dispose();
+    }
+  });
 
   EstablishedPeerConnection._(this.connection, this.localCandidates) {
     _registerCallbacks();
@@ -44,6 +53,7 @@ class EstablishedPeerConnection {
     if (_localStream != null) {
       _unregisterStreamCallbacks(_localStream!);
     }
+    remoteStreams.dispose();
     connection.close();
   }
 
@@ -58,6 +68,24 @@ class EstablishedPeerConnection {
     localStream.getTracks().forEach((track) {
       connection.addTrack(track, localStream);
     });
+    connection.onAddTrack = (stream, track) {
+      log("Add remote stream track");
+      remoteStreams[stream.id] ??= stream;
+      remoteStreams[stream.id]?.addTrack(track);
+    };
+    connection.onRemoveTrack = (stream, track) {
+      log("Remove remote stream track");
+      remoteStreams[stream.id] ??= stream;
+      remoteStreams[stream.id]?.removeTrack(track);
+    };
+    connection.onAddStream = (stream) {
+      log("Add remote stream");
+      remoteStreams[stream.id] = stream;
+    };
+    connection.onRemoveStream = (stream) {
+      log("Remove remote stream");
+      remoteStreams.removeItem(stream.id);
+    };
   }
 
   void _unregisterStreamCallbacks(MediaStream localStream) {
@@ -82,16 +110,11 @@ class PeerConnection extends ChangeNotifier {
   final String id;
   final Attendee remote;
   final ListDiffNotifier<RtcIceCandidateModel> _remoteCandidates;
-  final MapDiffNotifier<String, MediaStream> remoteStreams =
-      MapDiffNotifier((streams) {
-    for (final stream in streams.values) {
-      stream.getTracks().forEach((track) {
-        track.stop();
-      });
-      stream.dispose();
-    }
-  });
-  get localCandidates => _connection.localCandidates;
+
+  ListDiffNotifier<RtcIceCandidateModel> get localCandidates =>
+      _connection.localCandidates;
+  MapDiffNotifier<String, MediaStream> get remoteStreams =>
+      _connection.remoteStreams;
   Connection _conData;
   Connection get conData => _conData;
   void setConData(Connection conData) {
@@ -165,7 +188,6 @@ class PeerConnection extends ChangeNotifier {
   void dispose() {
     super.dispose();
     _remoteCandidates.dispose();
-    remoteStreams.dispose();
   }
 
   void _registerCallbacks() {
@@ -178,23 +200,5 @@ class PeerConnection extends ChangeNotifier {
     //     remoteStreams[stream.id] = stream;
     //   }
     // };
-    connection.onAddTrack = (stream, track) {
-      log("Add remote stream track");
-      remoteStreams[stream.id] ??= stream;
-      remoteStreams[stream.id]?.addTrack(track);
-    };
-    connection.onRemoveTrack = (stream, track) {
-      log("Remove remote stream track");
-      remoteStreams[stream.id] ??= stream;
-      remoteStreams[stream.id]?.removeTrack(track);
-    };
-    connection.onAddStream = (stream) {
-      log("Add remote stream");
-      remoteStreams[stream.id] = stream;
-    };
-    connection.onRemoveStream = (stream) {
-      log("Remove remote stream");
-      remoteStreams.removeItem(stream.id);
-    };
   }
 }
