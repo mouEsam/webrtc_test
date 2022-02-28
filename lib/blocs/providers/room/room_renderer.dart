@@ -45,7 +45,11 @@ class RoomRenderer {
   void init() {
     localRenderer = RTCVideoRenderer()
       ..initialize().then((value) {
+        log("initialized true");
         _rendererCompleter.complete(true);
+      }).onError((error, stackTrace) {
+        log("initialized false");
+        _rendererCompleter.complete(false);
       });
   }
 
@@ -68,12 +72,22 @@ class RoomRenderer {
       onAdded: _onConnectionAdded,
       onRemoved: _onConnectionRemoved,
     );
+    log("added listener");
+    final ls = _roomNotifier.localStream;
+    if (ls.value != null) {
+      _localStreamListener(ls.value);
+    }
     _roomNotifier.localStream.addListener(_localStreamListener);
   }
 
-  Future<void> _localStreamListener() async {
+  Future<void> _localStreamListener([MediaStream? stream]) async {
+    stream ??= _roomNotifier.localStream.value;
+    log("got renderer to stream");
     if (await _rendererCompleter.future) {
-      localRenderer?.srcObject = _roomNotifier.localStream.value;
+      log("got renderer future");
+      if (stream != null) {
+        localRenderer?.srcObject = stream;
+      }
     }
   }
 

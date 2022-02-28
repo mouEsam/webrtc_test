@@ -32,6 +32,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   final UserNotifier _userAccount;
   final IRoomClient _roomClient;
   late UserAccount userAccount;
+  Completer<MediaStream> _localStreamCompleter = Completer();
   final ValueNotifier<MediaStream?> _localStream = ValueNotifier(null);
   ListDiffNotifier<RtcIceCandidateModel>? _candidates;
   final ListDiffNotifier<PeerConnection> connections =
@@ -63,15 +64,22 @@ class RoomNotifier extends StateNotifier<RoomState> {
         userAccount = state.userAccount;
       }
     });
+    _setupLocalStream();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-    connections.dispose();
-    _candidates?.dispose();
-    _localStream.value?.dispose();
-    _localStream.dispose();
+  Future<void> _setupLocalStream() async {
+    if (_localStreamCompleter.isCompleted) return;
+    late final MediaStream? stream;
+    try {
+      stream = await openUserMedia();
+    } catch (e) {
+      stream = null;
+    }
+    log("got stream local $stream");
+    _localStream.value = stream;
+    if (!_localStreamCompleter.isCompleted) {
+      _localStreamCompleter.complete(stream);
+    }
   }
 
   Future<MediaStream> openUserMedia() async {
@@ -83,8 +91,18 @@ class RoomNotifier extends StateNotifier<RoomState> {
     }
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+    connections.dispose();
+    _candidates?.dispose();
+    _localStream.value?.dispose();
+    _localStream.dispose();
+  }
+
   Future<void> createRoom(String roomName, String name) async {
     return safeAttempt(() async {
+      await _setupLocalStream();
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
@@ -104,6 +122,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   Future<void> joinRoom(AvailableRoom availableRoom, String name) async {
     EstablishedPeerConnection? connection;
     return safeAttempt(() async {
+      await _setupLocalStream();
       connection = await _createNativeConnection(configuration);
       final offer = await connection!.createOffer();
       final data = await _roomClient.joinRoom(
@@ -203,13 +222,13 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   Future<EstablishedPeerConnection> _createNativeConnection(
       [Map<String, dynamic>? configuration]) async {
-    _localStream.value ??= await openUserMedia();
+    final localStream = await _localStreamCompleter.future;
     configuration ??= this.configuration;
     _candidates ??= ListDiffNotifier();
     final establishedConnection = await EstablishedPeerConnection.establish(
       configuration,
       _candidates!,
-      _localStream.value,
+      localStream,
     );
     return establishedConnection;
   }
@@ -228,6 +247,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
         connections.clear();
         _candidates?.dispose();
         _candidates = null;
+        _localStreamCompleter = Completer();
         _localStream.value?.dispose();
         _localStream.value = null;
         return const NoRoomState();
