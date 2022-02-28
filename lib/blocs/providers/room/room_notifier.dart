@@ -7,7 +7,6 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
-import 'package:webrtc_test/blocs/models/connection.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
@@ -88,15 +87,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
-      _candidates = _roomClient.getUserCandidates(
-        room,
-        userAccount,
-        user,
-      );
+      _setupUserCandidates(user);
       _setupRoomListeners(
         room,
         user,
-        _candidates!,
       );
       return ConnectedRoomState(
         room: data.first,
@@ -107,7 +101,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   }
 
   Future<void> joinRoom(AvailableRoom availableRoom, String name) async {
-    RTCPeerConnection? connection;
+    EstablishedPeerConnection? connection;
     return safeAttempt(() async {
       await openUserMedia();
       connection = await _createNativeConnection(configuration);
@@ -120,15 +114,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
       );
       final user = data.second;
       final room = data.first;
-      _candidates = _roomClient.getUserCandidates(
-        room,
-        userAccount,
-        user,
-      );
+      _setupUserCandidates(user);
       _setupRoomListeners(
         room,
         user,
-        _candidates!,
         connection,
       );
       return ConnectedRoomState(
@@ -139,11 +128,17 @@ class RoomNotifier extends StateNotifier<RoomState> {
     }, connection?.dispose);
   }
 
+  void _setupUserCandidates(Attendee user) {
+    _candidates ??= ListDiffNotifier();
+    _candidates?.addDiffListener(onAdded: (candidate) {
+      _roomClient.addCandidate(user, candidate);
+    });
+  }
+
   void _setupRoomListeners(
     Room room,
-    Attendee user,
-    ListDiffNotifier<RtcIceCandidateModel> userCandidates, [
-    RTCPeerConnection? connection,
+    Attendee user, [
+    EstablishedPeerConnection? connection,
   ]) {
     final connectionBox = Box(connection);
     room.connections.addDiffListener(onAdded: (conData) async {
@@ -156,11 +151,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
         return conData.id == element.id;
       });
       late final PeerConnection peerConnection;
-      late final RTCPeerConnection connection;
       if (existingConnection != null) {
         peerConnection = existingConnection;
-        connection = peerConnection.connection;
       } else {
+        late final EstablishedPeerConnection connection;
         if (connectionBox.hasData) {
           connection = connectionBox.data;
           connectionBox.data = null;
@@ -170,7 +164,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
         peerConnection = await PeerConnection.createConnection(
           conData.id!,
           attendee,
-          userCandidates,
           _roomClient.getUserCandidates(
             room,
             userAccount,
@@ -207,15 +200,16 @@ class RoomNotifier extends StateNotifier<RoomState> {
     });
   }
 
-  Future<RTCPeerConnection> _createNativeConnection(
+  Future<EstablishedPeerConnection> _createNativeConnection(
       [Map<String, dynamic>? configuration]) async {
     configuration ??= this.configuration;
-    final connection = await createPeerConnection(configuration);
-    _localStream?.getTracks().forEach((track) {
-      log("Adding track to connection");
-      connection.addTrack(track, _localStream!);
-    });
-    return connection;
+    _candidates ??= ListDiffNotifier();
+    final establishedConnection = await EstablishedPeerConnection.establish(
+      configuration,
+      _candidates!,
+      _localStream,
+    );
+    return establishedConnection;
   }
 
   Future<void> exitRoom() async {

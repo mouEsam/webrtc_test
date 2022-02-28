@@ -257,16 +257,6 @@ class RoomClient implements IRoomClient {
         }
       }
     });
-    if (attendee.id == user.id) {
-      candidates.addDiffListener(onAdded: (candidate) {
-        if (candidate.id == null) {
-          candidates.removeItem(candidate);
-          addCandidate(attendee, candidate).onError(
-            (error, _) => candidates.addItem(candidate),
-          );
-        }
-      });
-    }
     return candidates;
   }
 
