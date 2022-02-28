@@ -72,18 +72,17 @@ class RoomNotifier extends StateNotifier<RoomState> {
     _localStream?.dispose();
   }
 
-  Future<void> openUserMedia() async {
+  Future<MediaStream> openUserMedia() async {
     try {
-      _localStream = await navigator.mediaDevices
+      return await navigator.mediaDevices
           .getUserMedia({'video': true, 'audio': false});
     } catch (e) {
-      _localStream = await createLocalMediaStream(userAccount.id);
+      return await createLocalMediaStream(userAccount.id);
     }
   }
 
   Future<void> createRoom(String roomName, String name) async {
     return safeAttempt(() async {
-      await openUserMedia();
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
@@ -103,7 +102,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
   Future<void> joinRoom(AvailableRoom availableRoom, String name) async {
     EstablishedPeerConnection? connection;
     return safeAttempt(() async {
-      await openUserMedia();
       connection = await _createNativeConnection(configuration);
       final offer = await connection!.createOffer();
       connection!.setLocalDescription(offer);
@@ -202,6 +200,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
 
   Future<EstablishedPeerConnection> _createNativeConnection(
       [Map<String, dynamic>? configuration]) async {
+    _localStream ??= await openUserMedia();
     configuration ??= this.configuration;
     _candidates ??= ListDiffNotifier();
     final establishedConnection = await EstablishedPeerConnection.establish(
