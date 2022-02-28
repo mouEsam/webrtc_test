@@ -8,7 +8,6 @@ import 'package:riverpod/riverpod.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/available_room.dart';
 import 'package:webrtc_test/blocs/models/room.dart';
-import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/blocs/models/user.dart';
 import 'package:webrtc_test/blocs/providers/auth/user_notifier.dart';
 import 'package:webrtc_test/blocs/providers/auth/user_state.dart';
@@ -32,7 +31,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
   final IRoomClient _roomClient;
   late UserAccount userAccount;
   MediaStream? _localStream;
-  ListDiffNotifier<RtcIceCandidateModel>? _candidates;
   final ListDiffNotifier<PeerConnection> connections =
       ListDiffNotifier((connections) {
     for (var connection in connections) {
@@ -68,7 +66,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
   void dispose() {
     super.dispose();
     connections.dispose();
-    _candidates?.dispose();
+
     _localStream?.dispose();
   }
 
@@ -87,7 +85,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final data = await _roomClient.createRoom(name, userAccount);
       final user = data.second;
       final room = data.first;
-      _setupUserCandidates(user);
       _setupRoomListeners(
         room,
         user,
@@ -114,7 +111,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
       );
       final user = data.second;
       final room = data.first;
-      _setupUserCandidates(user);
       _setupRoomListeners(
         room,
         user,
@@ -128,10 +124,9 @@ class RoomNotifier extends StateNotifier<RoomState> {
     }, connection?.dispose);
   }
 
-  void _setupUserCandidates(Attendee user) {
-    _candidates ??= ListDiffNotifier();
-    _candidates?.addDiffListener(onAdded: (candidate) {
-      _roomClient.addCandidate(user, candidate);
+  void _setupUserCandidates(Attendee user, PeerConnection connection) {
+    connection.localCandidates.addDiffListener(onAdded: (candidate) {
+      _roomClient.addCandidate(user, candidate, connection.conData);
     });
   }
 
@@ -168,11 +163,15 @@ class RoomNotifier extends StateNotifier<RoomState> {
             room,
             userAccount,
             attendee,
+            conData,
           ),
           connection,
+          conData,
         );
+        _setupUserCandidates(attendee, peerConnection);
         connections.addItem(peerConnection);
       }
+      peerConnection.setConData(conData);
       if (conData.offerId == user.id) {
         if (!peerConnection.localSat) {
           await peerConnection.setOffer(offer: conData.offer, remote: false);
@@ -203,10 +202,8 @@ class RoomNotifier extends StateNotifier<RoomState> {
   Future<EstablishedPeerConnection> _createNativeConnection(
       [Map<String, dynamic>? configuration]) async {
     configuration ??= this.configuration;
-    _candidates ??= ListDiffNotifier();
     final establishedConnection = await EstablishedPeerConnection.establish(
       configuration,
-      _candidates!,
       _localStream,
     );
     return establishedConnection;
@@ -224,8 +221,6 @@ class RoomNotifier extends StateNotifier<RoomState> {
         }
         connections.forEach((value) => value.dispose());
         connections.clear();
-        _candidates?.dispose();
-        _candidates = null;
         _localStream?.dispose();
         _localStream = null;
         return const NoRoomState();

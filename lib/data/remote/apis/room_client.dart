@@ -26,7 +26,8 @@ final roomClientProvider = Provider<IRoomClient>((ref) {
 class RoomClient implements IRoomClient {
   static const _maxInt = 1 << 31; // safe for js
   static const _roomsCollection = 'AvailableRooms';
-  static const _iceCandidates = 'IceCandidates';
+  static const _oIceCandidates = 'OfferIceCandidates';
+  static const _aIceCandidates = 'AnswerIceCandidates';
   static const _attendeesCollection = 'Attendees';
   static const _connectionsCollection = 'Connections';
 
@@ -36,9 +37,15 @@ class RoomClient implements IRoomClient {
   const RoomClient(this._firestoreInstance, this.random);
 
   CollectionReference<RtcIceCandidateModel> getIceCandidates(
-      DocumentReference attendeeDoc) {
-    return attendeeDoc.collection(_iceCandidates).withConverter(
-        fromFirestore: (doc, options) {
+    DocumentReference connectionDoc,
+    String attendeeId,
+    String offerId,
+  ) {
+    final isOffer = offerId == attendeeId;
+    final collection = isOffer
+        ? connectionDoc.collection(_oIceCandidates)
+        : connectionDoc.collection(_aIceCandidates);
+    return collection.withConverter(fromFirestore: (doc, options) {
       final json = doc.data()!;
       return RtcIceCandidateModel(
         doc.id,
@@ -240,10 +247,15 @@ class RoomClient implements IRoomClient {
     Room room,
     UserAccount user,
     Attendee attendee,
+    Connection connection,
   ) {
     final roomDoc = getRooms(user.id).doc(room.id);
-    final attendeeDoc = getAttendees(roomDoc, user.id).doc(attendee.id);
-    final candidatesCollection = getIceCandidates(attendeeDoc);
+    final connectionDoc = getConnections(roomDoc).doc(connection.id);
+    final candidatesCollection = getIceCandidates(
+      connectionDoc,
+      attendee.id,
+      connection.offerId,
+    );
     final _subBox = Box<StreamSubscription>();
     final candidates =
         ListDiffNotifier<RtcIceCandidateModel>((_) => _subBox.data.cancel());
@@ -262,10 +274,14 @@ class RoomClient implements IRoomClient {
 
   @override
   Future<void> addCandidate(
-      Attendee attendee, RtcIceCandidateModel candidate) async {
+    Attendee attendee,
+    RtcIceCandidateModel candidate,
+    Connection connection,
+  ) async {
     final roomDoc = getRooms(attendee.id).doc(attendee.roomId);
-    final attendeeDoc = getAttendees(roomDoc, attendee.id).doc(attendee.id);
-    await getIceCandidates(attendeeDoc).add(candidate);
+    final connectionDoc = getConnections(roomDoc).doc(connection.id);
+    await getIceCandidates(connectionDoc, attendee.id, connection.offerId)
+        .add(candidate);
   }
 
   @override

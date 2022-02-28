@@ -3,25 +3,26 @@ import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
+import 'package:webrtc_test/blocs/models/connection.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
 import 'package:webrtc_test/helpers/utils/list_diff_notifier.dart';
 import 'package:webrtc_test/helpers/utils/map_diff_notifier.dart';
 
 class EstablishedPeerConnection {
   final RTCPeerConnection connection;
-  final ListDiffNotifier<RtcIceCandidateModel> _localCandidates;
+  final ListDiffNotifier<RtcIceCandidateModel> localCandidates;
   MediaStream? _localStream;
 
-  EstablishedPeerConnection._(this.connection, this._localCandidates) {
+  EstablishedPeerConnection._(this.connection, this.localCandidates) {
     _registerCallbacks();
   }
 
   static Future<EstablishedPeerConnection> establish(
       Map<String, dynamic> configuration,
-      ListDiffNotifier<RtcIceCandidateModel> candidates,
       [MediaStream? localStream]) async {
     final connection = await createPeerConnection(configuration);
-    final established = EstablishedPeerConnection._(connection, candidates);
+    final established =
+        EstablishedPeerConnection._(connection, ListDiffNotifier());
     established.localStream = localStream;
     return established;
   }
@@ -39,6 +40,7 @@ class EstablishedPeerConnection {
   }
 
   void dispose() {
+    localCandidates.dispose();
     if (_localStream != null) {
       _unregisterStreamCallbacks(_localStream!);
     }
@@ -48,7 +50,7 @@ class EstablishedPeerConnection {
   void _registerCallbacks() {
     connection.onIceCandidate = (candidate) {
       log('Got candidate: ${candidate.toMap()}');
-      _localCandidates.addItem(RtcIceCandidateModel.fromCandidate(candidate));
+      localCandidates.addItem(RtcIceCandidateModel.fromCandidate(candidate));
     };
   }
 
@@ -89,6 +91,13 @@ class PeerConnection extends ChangeNotifier {
       stream.dispose();
     }
   });
+  get localCandidates => _connection.localCandidates;
+  Connection _conData;
+  Connection get conData => _conData;
+  void setConData(Connection conData) {
+    _conData = conData;
+  }
+
   bool _localSat = false;
   bool get localSat => _localSat;
   bool _remoteSat = false;
@@ -100,6 +109,7 @@ class PeerConnection extends ChangeNotifier {
     this._connection,
     this.remote,
     this._remoteCandidates,
+    this._conData,
   ) {
     _registerCallbacks();
   }
@@ -113,12 +123,14 @@ class PeerConnection extends ChangeNotifier {
     Attendee remote,
     ListDiffNotifier<RtcIceCandidateModel> remoteCandidates,
     EstablishedPeerConnection connection,
+    Connection conData,
   ) async {
     final _connection = PeerConnection._(
       id,
       connection,
       remote,
       remoteCandidates,
+      conData,
     );
     return _connection;
   }

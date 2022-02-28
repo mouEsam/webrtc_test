@@ -4,8 +4,8 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 class Connection extends Equatable {
   final String? id;
   final List<String> parties;
-  final String? offerId;
-  final String? answerId;
+  final String offerId;
+  final String answerId;
   final RTCSessionDescription offer;
   final RTCSessionDescription? answer;
 

@@ -26,13 +26,19 @@ abstract class IRoomClient {
     Room room,
     UserAccount user,
     Attendee attendee,
+    Connection connection,
   );
 
-  Future<void> addCandidate(Attendee attendee, RtcIceCandidateModel candidate);
+  Future<void> addCandidate(
+    Attendee attendee,
+    RtcIceCandidateModel candidate,
+    Connection connection,
+  );
 
   Future<void> exitRoom(Attendee attendee);
 
   Future<void> closeRoom(Room room);
 
-  Future<void> addConnection(Room room, UserAccount userAccount, Connection connection);
+  Future<void> addConnection(
+      Room room, UserAccount userAccount, Connection connection);
 }
