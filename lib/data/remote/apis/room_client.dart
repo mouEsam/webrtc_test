@@ -280,6 +280,12 @@ class RoomClient implements IRoomClient {
   Future<void> exitRoom(Attendee attendee) async {
     final roomDoc = getRooms(attendee.id).doc(attendee.roomId);
     final attendeeDoc = getAttendees(roomDoc, attendee.id).doc(attendee.id);
+    final connections = await getConnections(roomDoc)
+        .where('parties', arrayContains: attendee.id)
+        .get();
+    await Future.wait(connections.docs.map((doc) {
+      return doc.reference.delete();
+    }));
     await attendeeDoc.delete();
   }
 
