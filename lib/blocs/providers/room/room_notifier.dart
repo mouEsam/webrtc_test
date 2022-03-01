@@ -64,16 +64,17 @@ class RoomNotifier extends StateNotifier<RoomState> {
         userAccount = state.userAccount;
       }
     });
-    _setupLocalStream();
+    _setupLocalStream(true);
   }
 
-  Future<void> _setupLocalStream() async {
+  Future<void> _setupLocalStream([bool initial = false]) async {
     if (_localStreamCompleter.isCompleted) return;
     late final MediaStream? stream;
     try {
       stream = await openUserMedia();
     } catch (e) {
       stream = null;
+      if (initial) return;
     }
     log("got stream local $stream");
     _localStream.value = stream;
@@ -177,7 +178,9 @@ class RoomNotifier extends StateNotifier<RoomState> {
           connection = connectionBox.data;
           connectionBox.data = null;
         } else {
-          connection = await _createNativeConnection(configuration);
+          connection = await _createNativeConnection(
+            configuration,
+          );
         }
         peerConnection = await PeerConnection.createConnection(
           conData.id!,
@@ -209,13 +212,13 @@ class RoomNotifier extends StateNotifier<RoomState> {
         }
       }
     });
-    room.attendees.addDiffListener(onRemoved: (attendee) {
+    room.attendees.addDiffListener(onRemoved: (attendee) async {
       final connection = connections.items
           .firstWhereOrNull((element) => element.remote.id == attendee.id);
       if (connection != null) {
         connection.localStream = null;
+        await connection.dispose();
         connections.removeItem(connection);
-        connection.dispose();
       }
     });
   }
@@ -240,10 +243,10 @@ class RoomNotifier extends StateNotifier<RoomState> {
         final attendee = state.user;
         state.room.attendees.dispose();
         await _roomClient.exitRoom(attendee);
-        if (state.room.attendees.isEmpty) {
+        if (state.room.attendees.length <= 1) {
           await _roomClient.closeRoom(state.room);
         }
-        connections.forEach((value) => value.dispose());
+        await Future.wait(connections.map((value) => value.dispose()));
         connections.clear();
         _candidates?.dispose();
         _candidates = null;

@@ -34,5 +34,6 @@ abstract class IRoomClient {
 
   Future<void> closeRoom(Room room);
 
-  Future<void> addConnection(Room room, UserAccount userAccount, Connection connection);
+  Future<void> addConnection(
+      Room room, UserAccount userAccount, Connection connection);
 }

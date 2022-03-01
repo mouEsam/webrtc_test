@@ -1,6 +1,5 @@
 import 'dart:developer';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:webrtc_test/blocs/models/attendee.dart';
 import 'package:webrtc_test/blocs/models/rtc_candidate.dart';
@@ -49,12 +48,12 @@ class EstablishedPeerConnection {
     _localStream = localStream;
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     if (_localStream != null) {
       _unregisterStreamCallbacks(_localStream!);
     }
     remoteStreams.dispose();
-    connection.close();
+    await connection.close();
   }
 
   void _registerCallbacks() {
@@ -115,7 +114,7 @@ class EstablishedPeerConnection {
   }
 }
 
-class PeerConnection extends ChangeNotifier {
+class PeerConnection {
   final EstablishedPeerConnection _connection;
   final String id;
   final Attendee remote;
@@ -173,9 +172,8 @@ class PeerConnection extends ChangeNotifier {
     return answer;
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  Future<void> dispose() async {
+    await _connection.dispose();
     _remoteCandidates.dispose();
   }
 
