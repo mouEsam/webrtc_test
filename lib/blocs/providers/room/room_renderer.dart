@@ -97,7 +97,7 @@ class RoomRenderer {
     log("got renderer to stream");
     if (await _rendererCompleter.future) {
       log("got renderer future");
-      if (stream != null) {
+      if (stream != null && stream.id != localRenderer?.srcObject?.id) {
         localRenderer?.srcObject = stream;
       }
     }

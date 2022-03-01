@@ -77,7 +77,9 @@ class RoomNotifier extends StateNotifier<RoomState> {
       if (initial) return;
     }
     log("got stream local $stream");
-    _localStream.value = stream;
+    if (_localStream.value?.id != stream?.id) {
+      _localStream.value = stream;
+    }
     if (!_localStreamCompleter.isCompleted) {
       _localStreamCompleter.complete(stream);
     }
