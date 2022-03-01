@@ -218,24 +218,23 @@ class RoomNotifier extends StateNotifier<RoomState> {
       final existingConnections = connections.items.where((element) {
         return conData.id == element.id;
       }).toList();
-      await _closeConnections(existingConnections, false);
+      connections.removeAll(existingConnections);
+      await _closeConnections(existingConnections);
     });
     room.attendees.addDiffListener(onRemoved: (attendee) async {
       final attendeeConnections = connections.items
           .where((element) => element.remote.id == attendee.id)
           .toList();
+      connections.removeAll(attendeeConnections);
       await _closeConnections(attendeeConnections);
     });
   }
 
-  Future<void> _closeConnections(List<PeerConnection> existingConnections,
-      [bool remove = true]) async {
+  Future<void> _closeConnections(
+      List<PeerConnection> existingConnections) async {
     for (final connection in existingConnections) {
       connection.localStream = null;
       await connection.dispose();
-      if (remove) {
-        connections.removeItem(connection);
-      }
     }
   }
 

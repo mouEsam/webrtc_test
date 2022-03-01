@@ -87,6 +87,10 @@ class ListDiffNotifier<I> extends ChangeNotifier {
     }
   }
 
+  void removeAll(List<I> removed) {
+    removed.forEach(removeItem);
+  }
+
   void clear([bool notify = true]) {
     if (notify) {
       for (var item in _items) {
@@ -97,6 +101,7 @@ class ListDiffNotifier<I> extends ChangeNotifier {
   }
 
   void forEach(ValueChanged<I> action) => _items.forEach(action);
+
   Iterable<T> map<T>(T Function(I value) mapper) => _items.map(mapper);
 
   I? replaceFirstWhere(I item, bool Function(I item) predicate,
