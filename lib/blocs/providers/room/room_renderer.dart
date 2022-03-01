@@ -54,17 +54,29 @@ class RoomRenderer {
   }
 
   void dispose() {
-    _roomNotifier.connections.removeDiffListener(
-      onAdded: _onConnectionAdded,
-      onRemoved: _onConnectionRemoved,
-    );
-    _roomNotifier.localStream.removeListener(_localStreamListener);
+    clear();
     localRenderer?.dispose();
     localRenderer = null;
     remoteRenderers.dispose();
     if (!_rendererCompleter.isCompleted) {
       _rendererCompleter.complete(false);
     }
+  }
+
+  void clear() {
+    _roomNotifier.connections.removeDiffListener(
+      onAdded: _onConnectionAdded,
+      onRemoved: _onConnectionRemoved,
+    );
+    _roomNotifier.localStream.removeListener(_localStreamListener);
+    if (localRenderer?.srcObject != null) {
+      localRenderer?.srcObject = null;
+    }
+    for (var renderer in remoteRenderers.values) {
+      renderer.srcObject = null;
+      renderer.dispose();
+    }
+    remoteRenderers.clear();
   }
 
   void setupRoom() {
@@ -89,21 +101,6 @@ class RoomRenderer {
         localRenderer?.srcObject = stream;
       }
     }
-  }
-
-  void clear() {
-    _roomNotifier.connections.removeDiffListener(
-      onAdded: _onConnectionAdded,
-      onRemoved: _onConnectionRemoved,
-    );
-    if (localRenderer != null && localRenderer?.srcObject != null) {
-      localRenderer?.srcObject = null;
-    }
-    for (var renderer in remoteRenderers.values) {
-      renderer.srcObject = null;
-      renderer.dispose();
-    }
-    remoteRenderers.clear();
   }
 
   void _onConnectionRemoved(PeerConnection connection) {
