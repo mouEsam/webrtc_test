@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:webrtc_test/blocs/models/attendee.dart';
 
 class Connection extends Equatable {
   final String? id;
@@ -29,6 +30,9 @@ class Connection extends Equatable {
   Connection setAnswer(RTCSessionDescription answer) {
     return Connection(id, parties, offerId, answerId, offer, answer);
   }
+
+  bool isOffer(Attendee user) => offerId == user.id;
+  bool isAnswer(Attendee user) => answerId == user.id;
 
   @override
   get props => [

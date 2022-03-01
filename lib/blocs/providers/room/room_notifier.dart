@@ -159,6 +159,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
     Attendee user, [
     EstablishedPeerConnection? connection,
   ]) {
+    final isOffer = connection != null;
     final connectionBox = Box(connection);
     room.connections.addDiffListener(onAdded: (conData) async {
       final attendee = room.attendees.items.firstWhereOrNull((element) {
@@ -174,7 +175,7 @@ class RoomNotifier extends StateNotifier<RoomState> {
         peerConnection = existingConnection;
       } else {
         late final EstablishedPeerConnection connection;
-        if (connectionBox.hasData) {
+        if (connectionBox.hasData && isOffer == conData.isOffer(user)) {
           connection = connectionBox.data;
           connectionBox.data = null;
         } else {
@@ -194,14 +195,14 @@ class RoomNotifier extends StateNotifier<RoomState> {
         );
         connections.addItem(peerConnection);
       }
-      if (conData.offerId == user.id) {
+      if (conData.isOffer(user)) {
         if (!peerConnection.localSat) {
           await peerConnection.setOffer(offer: conData.offer, remote: false);
         }
         if (!peerConnection.remoteSat && conData.answer != null) {
           await peerConnection.setAnswer(answer: conData.answer, remote: true);
         }
-      } else if (conData.answerId == user.id) {
+      } else if (conData.isAnswer(user)) {
         if (!peerConnection.remoteSat) {
           await peerConnection.setOffer(offer: conData.offer, remote: true);
         }
